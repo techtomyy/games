@@ -57,6 +57,10 @@ export class MemStorage implements IStorage {
       ...existingUser,
       ...userData,
       id: userData.id || randomUUID(),
+      email: userData.email || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: userData.profileImageUrl || null,
       createdAt: existingUser?.createdAt || new Date(),
       updatedAt: new Date(),
     };
@@ -103,9 +107,10 @@ export class MemStorage implements IStorage {
     const game: Game = {
       ...gameData,
       id,
+      spriteData: gameData.spriteData || null,
+      isPublic: gameData.isPublic || false,
       likes: 0,
       plays: 0,
-      isPublic: gameData.isPublic || false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -126,7 +131,7 @@ export class MemStorage implements IStorage {
   async getPublicGames(limit = 20): Promise<Game[]> {
     return Array.from(this.games.values())
       .filter(game => game.isPublic)
-      .sort((a, b) => b.likes - a.likes)
+      .sort((a, b) => (b.likes || 0) - (a.likes || 0))
       .slice(0, limit);
   }
 
@@ -142,7 +147,7 @@ export class MemStorage implements IStorage {
   async incrementGamePlays(id: string): Promise<void> {
     const game = this.games.get(id);
     if (game) {
-      game.plays += 1;
+      game.plays = (game.plays || 0) + 1;
       game.updatedAt = new Date();
       this.games.set(id, game);
     }

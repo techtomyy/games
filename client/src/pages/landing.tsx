@@ -442,18 +442,6 @@ export default function Landing() {
 
       <Footer />
 
-      <style jsx>{`
-        .fade-up {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-        
-        .fade-up.animate-in {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      `}</style>
     </div>
   );
 }

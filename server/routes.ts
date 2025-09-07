@@ -99,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No subscription found" });
       }
 
-      if (subscription.plan === 'free' && subscription.gamesCreatedThisMonth >= subscription.maxGamesPerMonth) {
+      if (subscription.plan === 'free' && (subscription.gamesCreatedThisMonth || 0) >= (subscription.maxGamesPerMonth || 3)) {
         return res.status(403).json({ message: "Monthly game limit reached. Upgrade to create more games." });
       }
 
@@ -131,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update subscription usage
       await storage.updateUserSubscription(userId, {
-        gamesCreatedThisMonth: subscription.gamesCreatedThisMonth + 1,
+        gamesCreatedThisMonth: (subscription.gamesCreatedThisMonth || 0) + 1,
       });
 
       res.json(game);
