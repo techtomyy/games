@@ -203,8 +203,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Game not found" });
       }
       
-      await storage.updateGameLikes(req.params.id, game.likes + 1);
-      res.json({ likes: game.likes + 1 });
+      await storage.updateGameLikes(req.params.id, (game.likes || 0) + 1);
+      res.json({ likes: (game.likes || 0) + 1 });
     } catch (error) {
       console.error("Error liking game:", error);
       res.status(500).json({ message: "Failed to like game" });
