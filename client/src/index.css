@@ -117,23 +117,23 @@
   }
 
   .btn-coral {
-    @apply bg-coral hover:bg-coral/90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105;
+    @apply bg-coral hover:opacity-90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 transform hover:scale-105;
   }
 
   .btn-turquoise {
-    @apply bg-turquoise hover:bg-turquoise/90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+    @apply bg-turquoise hover:opacity-90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
   }
 
   .btn-gold {
-    @apply bg-gold hover:bg-gold/90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+    @apply bg-gold hover:opacity-90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
   }
 
   .btn-orange {
-    @apply bg-orange hover:bg-orange/90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+    @apply bg-orange hover:opacity-90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200;
   }
 
   .btn-primary {
-    @apply bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+    @apply bg-primary hover:opacity-90 text-primary-foreground font-semibold px-6 py-3 rounded-xl transition-all duration-200;
   }
 
   .game-card {
