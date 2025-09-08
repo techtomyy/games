@@ -134,29 +134,20 @@ const login = async (req, res) => {
             const errorMessage = error.message ? error.message.toLowerCase() : '';
             const errorStatus = error.status || error.statusCode || 0;
             
-            // Check for email confirmation related errors
+            // Check for email confirmation related errors - be more specific to avoid false positives
             const isEmailConfirmationError = (
                 errorMessage.includes('email not confirmed') ||
                 errorMessage.includes('email_not_confirmed') ||
-                errorMessage.includes('confirmation') ||
                 errorMessage.includes('email address not confirmed') ||
-                errorMessage.includes('unconfirmed') ||
-                errorMessage.includes('verify') ||
                 errorMessage.includes('confirm your email') ||
                 errorMessage.includes('email confirmation') ||
-                errorMessage.includes('please confirm') ||
-                errorMessage.includes('confirm your account') ||
-                errorMessage.includes('email verification') ||
-                errorMessage.includes('verify your email') ||
-                errorMessage.includes('account not confirmed') ||
-                errorMessage.includes('not confirmed') ||
-                errorMessage.includes('email needs to be confirmed') ||
+                errorMessage.includes('please confirm your email') ||
                 errorMessage.includes('confirm your email address') ||
                 errorMessage.includes('email verification required') ||
                 errorMessage.includes('please verify your email') ||
-                // Also check for specific error codes that might indicate email confirmation issues
-                errorStatus === 403 ||
-                errorStatus === 422
+                errorMessage.includes('verify your email address') ||
+                // Only check specific error codes that are known to indicate email confirmation issues
+                (errorStatus === 403 && errorMessage.includes('email'))
             );
             
             if (isEmailConfirmationError) {
@@ -166,25 +157,8 @@ const login = async (req, res) => {
                 });
             }
             
-            // For other authentication errors, let's try to check if user exists but is unconfirmed
-            // This is a fallback approach - try to resend confirmation to see if user exists
-            try {
-                const { error: resendError } = await supabase.auth.resend({
-                    type: 'signup',
-                    email: email
-                });
-                
-                // If resend works without error, user exists but is unconfirmed
-                if (!resendError) {
-                    return res.status(403).json({
-                        success: false,
-                        error: "Email not confirmed. Please check your inbox and click the confirmation link before logging in. If you don't see the email, check your spam folder or request a new confirmation email."
-                    });
-                }
-            } catch (resendCheckError) {
-                // If resend fails, user probably doesn't exist or has other issues
-                console.log('Resend check failed:', resendCheckError.message);
-            }
+            // Remove the fallback resend check as it was causing false positives
+            // We'll rely only on Supabase's direct error messages for email confirmation detection
             
             // For other authentication errors, return generic message
             return res.status(401).json({
