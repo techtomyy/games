@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const { supabase, adminSupabase } = require('../config/supabase');
 
 
 // User signup
@@ -31,6 +31,29 @@ const signup = async (req, res) => {
             });
         }
         
+        // Pre-check with admin client if available to avoid duplicate signups
+        if (adminSupabase) {
+            try {
+                const { data: existing, error: adminErr } = await adminSupabase.auth.admin.listUsers({
+                    page: 1,
+                    perPage: 1,
+                    email
+                });
+                if (!adminErr && existing && Array.isArray(existing.users)) {
+                    const found = existing.users.find(u => (u.email || '').toLowerCase() === email.toLowerCase());
+                    if (found) {
+                        return res.status(409).json({
+                            success: false,
+                            error: 'Account already exists on this email'
+                        });
+                    }
+                }
+            } catch (adminCheckErr) {
+                // Proceed without blocking on admin pre-check errors
+                console.warn('Admin pre-check failed, proceeding with signup:', adminCheckErr?.message || adminCheckErr);
+            }
+        }
+
         // Sign up user with Supabase Auth
         const { data, error } = await supabase.auth.signUp({
             email: email,
@@ -46,12 +69,36 @@ const signup = async (req, res) => {
         
         if (error) {
             console.error('Signup error:', error);
+            const message = (error.message || '').toLowerCase();
+            const isExistingAccount =
+                message.includes('already registered') ||
+                message.includes('email already') ||
+                message.includes('already exists') ||
+                message.includes('duplicate') ||
+                message.includes('unique constraint') ||
+                message.includes('user already');
+
+            if (isExistingAccount) {
+                return res.status(409).json({
+                    success: false,
+                    error: 'Account already exists on this email'
+                });
+            }
+
             return res.status(400).json({
                 success: false,
                 error: error.message
             });
         }
         
+        // Detect Supabase "existing user" edge case: identities array missing or empty
+        if (data.user && (!data.user.identities || (Array.isArray(data.user.identities) && data.user.identities.length === 0))) {
+            return res.status(409).json({
+                success: false,
+                error: 'Account already exists on this email'
+            });
+        }
+
         // If user is created but needs email confirmation
         if (data.user && !data.session) {
             return res.status(201).json({

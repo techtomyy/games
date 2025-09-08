@@ -99,9 +99,17 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
           ),
         });
       } else {
+        // Check if it's a genuine authentication failure (invalid credentials)
+        const isInvalidCredentials = errorMessage.toLowerCase().includes('invalid email') || 
+                                   errorMessage.toLowerCase().includes('invalid password') ||
+                                   errorMessage.toLowerCase().includes('invalid credentials') ||
+                                   errorMessage.toLowerCase().includes('authentication failed');
+        
+        const displayMessage = isInvalidCredentials ? "Invalid email and password" : errorMessage;
+        
         toast({
           title: "Login Failed",
-          description: errorMessage,
+          description: displayMessage,
           variant: "destructive",
         });
       }
@@ -122,6 +130,26 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
 
     try {
       const response = await signup(email, password, firstName, lastName);
+
+      // Safety: if backend ever returns success with a duplicate-email phrasing, handle it here
+      const msg = (response?.message || '').toLowerCase();
+      const looksLikeDuplicate =
+        msg.includes('already registered') ||
+        msg.includes('email already') ||
+        msg.includes('already exists') ||
+        msg.includes('duplicate') ||
+        msg.includes('unique constraint') ||
+        msg.includes('user already');
+
+      if (looksLikeDuplicate) {
+        toast({
+          title: "Signup Failed",
+          description: "Account already exists on this email",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Account Created!",
         description: "Please check your email to confirm your account before logging in.",
@@ -133,10 +161,23 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
       const errorMessage = error.message?.includes(':') 
         ? error.message.split(': ')[1] 
         : error.message || "Failed to create account. Please try again.";
-      
+      // Friendlier message when email already exists
+      const lower = (errorMessage || '').toLowerCase();
+      const isExistingAccount =
+        lower.includes('already registered') ||
+        lower.includes('email already') ||
+        lower.includes('already exists') ||
+        lower.includes('duplicate') ||
+        lower.includes('unique constraint') ||
+        lower.includes('user already');
+
+      const displayMessage = isExistingAccount
+        ? 'Account already exists on this email'
+        : errorMessage;
+
       toast({
         title: "Signup Failed",
-        description: errorMessage,
+        description: displayMessage,
         variant: "destructive",
       });
     } finally {
@@ -168,9 +209,19 @@ export default function AuthForm({ onSuccess }: AuthFormProps) {
         ? error.message.split(': ')[1] 
         : error.message || "Demo accounts not available. Please create your own account.";
       
+      // Check if it's a genuine authentication failure (invalid credentials)
+      const isInvalidCredentials = errorMessage.toLowerCase().includes('invalid email') || 
+                                 errorMessage.toLowerCase().includes('invalid password') ||
+                                 errorMessage.toLowerCase().includes('invalid credentials') ||
+                                 errorMessage.toLowerCase().includes('authentication failed');
+      
+      const displayMessage = isInvalidCredentials 
+        ? "Invalid email and password. You can create your own account using the signup form."
+        : errorMessage + " You can create your own account using the signup form.";
+      
       toast({
         title: "Demo Login Failed",
-        description: errorMessage + " You can create your own account using the signup form.",
+        description: displayMessage,
         variant: "destructive",
       });
     } finally {

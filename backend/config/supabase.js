@@ -4,6 +4,7 @@ require('dotenv').config();
 // Supabase configuration
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Validate environment variables
 if (!supabaseUrl || !supabaseKey) {
@@ -14,6 +15,14 @@ if (!supabaseUrl || !supabaseKey) {
 
 // Create Supabase client
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Create Admin Supabase client (if service role key is provided)
+let adminSupabase = null;
+if (supabaseServiceRoleKey) {
+    adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false }
+    });
+}
 
 // Test connection function
 const testConnection = async () => {
@@ -206,6 +215,7 @@ const dbHelpers = {
 
 module.exports = {
     supabase,
+    adminSupabase,
     testConnection,
     dbHelpers
 };
