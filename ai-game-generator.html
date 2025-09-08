@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Game Generator - DrawPlay Universe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            padding: 2rem;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            width: 400px;
+            height: fit-content;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .upload-area:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #5a6fd8;
+        }
+
+        .upload-area.dragover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #4c63d2;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        #imageInput {
+            display: none;
+        }
+
+        .image-preview {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .game-section {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .game-canvas {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .game-info {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            width: 300px;
+            height: fit-content;
+        }
+
+        .info-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .info-section h3 {
+            color: #333;
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.3rem;
+        }
+
+        .score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .control-btn {
+            padding: 0.8rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: #667eea;
+            color: white;
+        }
+
+        .control-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .control-btn.secondary {
+            background: #6c757d;
+        }
+
+        .control-btn.secondary:hover {
+            background: #5a6268;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .code-display {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            
+            .upload-section, .game-info {
+                width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🤖 AI Game Generator</h1>
+        <p>Upload an image and watch AI create a playable game!</p>
+    </div>
+
+    <div class="main-container">
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">Upload Image</div>
+                <div class="upload-subtext">Drag & drop or click to select</div>
+            </div>
+            <input type="file" id="imageInput" accept="image/*">
+            
+            <div class="image-preview" id="imagePreview" style="display: none;">
+                <img id="previewImage" class="preview-image" alt="Preview">
+            </div>
+
+            <button class="generate-btn" id="generateBtn" disabled>Generate Game</button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>AI is analyzing your image and generating game code...</p>
+            </div>
+        </div>
+
+        <div class="game-section">
+            <canvas id="gameCanvas" class="game-canvas" width="800" height="600"></canvas>
+            <div class="code-display" id="codeDisplay">
+                <div id="generatedCode"></div>
+            </div>
+        </div>
+
+        <div class="game-info">
+            <div class="score">Score: <span id="score">0</span></div>
+            
+            <div class="info-section">
+                <h3>🎮 Game Controls</h3>
+                <div class="controls">
+                    <button class="control-btn" id="startBtn">Start</button>
+                    <button class="control-btn" id="pauseBtn">Pause</button>
+                    <button class="control-btn" id="resetBtn">Reset</button>
+                    <button class="control-btn secondary" id="showCodeBtn">Show Code</button>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>🎯 Game Info</h3>
+                <div id="gameDescription">
+                    <p>Upload an image to generate a game!</p>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>🏆 Achievements</h3>
+                <div id="achievements">
+                    <p>🎨 Image Analyzed</p>
+                    <p>🤖 Game Generated</p>
+                    <p>🎮 Game Played</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>AI Game Generator - Where images become playable games! 🤖🎮</p>
+    </div>
+
+    <script>
+        class AIGameGenerator {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.uploadArea = document.getElementById('uploadArea');
+                this.imageInput = document.getElementById('imageInput');
+                this.previewImage = document.getElementById('previewImage');
+                this.imagePreview = document.getElementById('imagePreview');
+                this.generateBtn = document.getElementById('generateBtn');
+                this.loading = document.getElementById('loading');
+                this.codeDisplay = document.getElementById('codeDisplay');
+                this.generatedCode = document.getElementById('generatedCode');
+                
+                this.currentImage = null;
+                this.game = null;
+                this.score = 0;
+                this.isGameRunning = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Upload area events
+                this.uploadArea.addEventListener('click', () => this.imageInput.click());
+                this.uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    this.uploadArea.classList.add('dragover');
+                });
+                this.uploadArea.addEventListener('dragleave', () => {
+                    this.uploadArea.classList.remove('dragover');
+                });
+                this.uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    this.uploadArea.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.handleImageUpload(files[0]);
+                    }
+                });
+
+                // File input
+                this.imageInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        this.handleImageUpload(e.target.files[0]);
+                    }
+                });
+
+                // Generate button
+                this.generateBtn.addEventListener('click', () => this.generateGame());
+
+                // Control buttons
+                document.getElementById('startBtn').addEventListener('click', () => this.startGame());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pauseGame());
+                document.getElementById('resetBtn').addEventListener('click', () => this.resetGame());
+                document.getElementById('showCodeBtn').addEventListener('click', () => this.toggleCodeDisplay());
+            }
+
+            handleImageUpload(file) {
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.currentImage = new Image();
+                    this.currentImage.onload = () => {
+                        this.previewImage.src = e.target.result;
+                        this.imagePreview.style.display = 'block';
+                        this.generateBtn.disabled = false;
+                    };
+                    this.currentImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            async generateGame() {
+                this.loading.style.display = 'block';
+                this.generateBtn.disabled = true;
+
+                // Simulate AI analysis and code generation
+                await this.simulateAIAnalysis();
+                
+                // Generate game based on image analysis
+                this.game = this.analyzeImageAndGenerateGame();
+                
+                this.loading.style.display = 'none';
+                this.generateBtn.disabled = false;
+                
+                this.updateGameDescription();
+                this.displayGeneratedCode();
+                this.addScore(10);
+            }
+
+            async simulateAIAnalysis() {
+                return new Promise(resolve => {
+                    setTimeout(resolve, 3000); // Simulate 3 seconds of AI processing
+                });
+            }
+
+            analyzeImageAndGenerateGame() {
+                // AI-like analysis of the image
+                const analysis = this.performImageAnalysis();
+                
+                // Generate appropriate game based on analysis
+                switch (analysis.gameType) {
+                    case 'platformer':
+                        return new PlatformerGame(this.canvas, this.ctx, analysis);
+                    case 'puzzle':
+                        return new PuzzleGame(this.canvas, this.ctx, analysis);
+                    case 'shooter':
+                        return new ShooterGame(this.canvas, this.ctx, analysis);
+                    case 'racing':
+                        return new RacingGame(this.canvas, this.ctx, analysis);
+                    default:
+                        return new GenericGame(this.canvas, this.ctx, analysis);
+                }
+            }
+
+            performImageAnalysis() {
+                // Simulate AI image analysis
+                const gameTypes = ['platformer', 'puzzle', 'shooter', 'racing', 'adventure'];
+                const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+                const themes = ['space', 'fantasy', 'modern', 'retro', 'nature'];
+                
+                return {
+                    gameType: gameTypes[Math.floor(Math.random() * gameTypes.length)],
+                    primaryColor: colors[Math.floor(Math.random() * colors.length)],
+                    theme: themes[Math.floor(Math.random() * themes.length)],
+                    complexity: Math.floor(Math.random() * 5) + 1,
+                    objects: this.detectObjects(),
+                    mood: this.analyzeMood()
+                };
+            }
+
+            detectObjects() {
+                // Simulate object detection
+                const objects = ['player', 'enemy', 'collectible', 'obstacle', 'powerup'];
+                const detected = [];
+                for (let i = 0; i < Math.floor(Math.random() * 3) + 2; i++) {
+                    detected.push(objects[Math.floor(Math.random() * objects.length)]);
+                }
+                return [...new Set(detected)];
+            }
+
+            analyzeMood() {
+                const moods = ['action', 'relaxing', 'challenging', 'fun', 'mysterious'];
+                return moods[Math.floor(Math.random() * moods.length)];
+            }
+
+            updateGameDescription() {
+                const description = document.getElementById('gameDescription');
+                if (this.game) {
+                    description.innerHTML = `
+                        <p><strong>Game Type:</strong> ${this.game.analysis.gameType}</p>
+                        <p><strong>Theme:</strong> ${this.game.analysis.theme}</p>
+                        <p><strong>Mood:</strong> ${this.game.analysis.mood}</p>
+                        <p><strong>Objects:</strong> ${this.game.analysis.objects.join(', ')}</p>
+                        <p><strong>Complexity:</strong> ${this.game.analysis.complexity}/5</p>
+                    `;
+                }
+            }
+
+            displayGeneratedCode() {
+                if (this.game) {
+                    const code = this.game.getGeneratedCode();
+                    this.generatedCode.textContent = code;
+                }
+            }
+
+            toggleCodeDisplay() {
+                this.codeDisplay.style.display = this.codeDisplay.style.display === 'none' ? 'block' : 'none';
+            }
+
+            startGame() {
+                if (this.game) {
+                    this.game.start();
+                    this.isGameRunning = true;
+                    this.addScore(5);
+                }
+            }
+
+            pauseGame() {
+                if (this.game) {
+                    this.game.pause();
+                    this.isGameRunning = false;
+                }
+            }
+
+            resetGame() {
+                if (this.game) {
+                    this.game.reset();
+                    this.score = 0;
+                    this.updateScore();
+                }
+            }
+
+            addScore(points) {
+                this.score += points;
+                this.updateScore();
+            }
+
+            updateScore() {
+                document.getElementById('score').textContent = this.score;
+            }
+        }
+
+        // Base Game Class
+        class BaseGame {
+            constructor(canvas, ctx, analysis) {
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.analysis = analysis;
+                this.isRunning = false;
+                this.gameObjects = [];
+                this.score = 0;
+            }
+
+            start() {
+                this.isRunning = true;
+                this.gameLoop();
+            }
+
+            pause() {
+                this.isRunning = false;
+            }
+
+            reset() {
+                this.isRunning = false;
+                this.gameObjects = [];
+                this.score = 0;
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            gameLoop() {
+                if (!this.isRunning) return;
+                
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            update() {
+                // Override in subclasses
+            }
+
+            render() {
+                // Override in subclasses
+            }
+
+            getGeneratedCode() {
+                return `// Generated ${this.analysis.gameType} game code
+// Theme: ${this.analysis.theme}
+// Mood: ${this.analysis.mood}
+
+class ${this.analysis.gameType.charAt(0).toUpperCase() + this.analysis.gameType.slice(1)}Game {
+    constructor(canvas, ctx) {
+        this.canvas = canvas;
+        this.ctx = ctx;
+        this.isRunning = false;
+        this.score = 0;
+        this.gameObjects = [];
+    }
+
+    start() {
+        this.isRunning = true;
+        this.gameLoop();
+    }
+
+    gameLoop() {
+        if (!this.isRunning) return;
+        
+        this.update();
+        this.render();
+        requestAnimationFrame(() => this.gameLoop());
+    }
+
+    update() {
+        // Game logic here
+    }
+
+    render() {
+        // Rendering logic here
+    }
+}`;
+            }
+        }
+
+        // Platformer Game
+        class PlatformerGame extends BaseGame {
+            constructor(canvas, ctx, analysis) {
+                super(canvas, ctx, analysis);
+                this.player = { x: 50, y: 400, width: 30, height: 30, vx: 0, vy: 0, onGround: false };
+                this.platforms = [
+                    { x: 0, y: 550, width: 200, height: 50 },
+                    { x: 250, y: 500, width: 150, height: 20 },
+                    { x: 450, y: 450, width: 150, height: 20 },
+                    { x: 650, y: 400, width: 150, height: 20 }
+                ];
+                this.collectibles = [
+                    { x: 100, y: 500, width: 15, height: 15, collected: false },
+                    { x: 300, y: 450, width: 15, height: 15, collected: false },
+                    { x: 500, y: 400, width: 15, height: 15, collected: false }
+                ];
+                this.gravity = 0.5;
+                this.jumpPower = -12;
+            }
+
+            update() {
+                // Player movement
+                if (this.isRunning) {
+                    // Apply gravity
+                    this.player.vy += this.gravity;
+                    this.player.y += this.player.vy;
+
+                    // Check platform collisions
+                    this.player.onGround = false;
+                    for (let platform of this.platforms) {
+                        if (this.checkCollision(this.player, platform)) {
+                            if (this.player.vy > 0) {
+                                this.player.y = platform.y - this.player.height;
+                                this.player.vy = 0;
+                                this.player.onGround = true;
+                            }
+                        }
+                    }
+
+                    // Check collectible collisions
+                    for (let collectible of this.collectibles) {
+                        if (!collectible.collected && this.checkCollision(this.player, collectible)) {
+                            collectible.collected = true;
+                            this.score += 10;
+                        }
+                    }
+
+                    // Keep player on screen
+                    if (this.player.y > this.canvas.height) {
+                        this.player.y = 400;
+                        this.player.x = 50;
+                    }
+                }
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw platforms
+                this.ctx.fillStyle = '#8B4513';
+                for (let platform of this.platforms) {
+                    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                }
+
+                // Draw collectibles
+                this.ctx.fillStyle = '#FFD700';
+                for (let collectible of this.collectibles) {
+                    if (!collectible.collected) {
+                        this.ctx.fillRect(collectible.x, collectible.y, collectible.width, collectible.height);
+                    }
+                }
+
+                // Draw player
+                this.ctx.fillStyle = '#FF6B6B';
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+
+                // Draw score
+                this.ctx.fillStyle = '#000';
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+            }
+
+            checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            handleKeyPress(key) {
+                if (key === 'ArrowLeft') {
+                    this.player.x -= 5;
+                } else if (key === 'ArrowRight') {
+                    this.player.x += 5;
+                } else if (key === ' ' && this.player.onGround) {
+                    this.player.vy = this.jumpPower;
+                }
+            }
+        }
+
+        // Puzzle Game
+        class PuzzleGame extends BaseGame {
+            constructor(canvas, ctx, analysis) {
+                super(canvas, ctx, analysis);
+                this.gridSize = 8;
+                this.cellSize = this.canvas.width / this.gridSize;
+                this.grid = this.generatePuzzle();
+                this.selectedCell = null;
+            }
+
+            generatePuzzle() {
+                const grid = [];
+                for (let i = 0; i < this.gridSize; i++) {
+                    grid[i] = [];
+                    for (let j = 0; j < this.gridSize; j++) {
+                        grid[i][j] = Math.random() > 0.5 ? 1 : 0;
+                    }
+                }
+                return grid;
+            }
+
+            update() {
+                // Puzzle logic
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                for (let i = 0; i < this.gridSize; i++) {
+                    for (let j = 0; j < this.gridSize; j++) {
+                        this.ctx.fillStyle = this.grid[i][j] ? '#4ECDC4' : '#FFE66D';
+                        this.ctx.fillRect(j * this.cellSize, i * this.cellSize, this.cellSize, this.cellSize);
+                        
+                        this.ctx.strokeStyle = '#333';
+                        this.ctx.strokeRect(j * this.cellSize, i * this.cellSize, this.cellSize, this.cellSize);
+                    }
+                }
+
+                this.ctx.fillStyle = '#000';
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+            }
+        }
+
+        // Shooter Game
+        class ShooterGame extends BaseGame {
+            constructor(canvas, ctx, analysis) {
+                super(canvas, ctx, analysis);
+                this.player = { x: 400, y: 500, width: 30, height: 30 };
+                this.bullets = [];
+                this.enemies = [];
+                this.lastEnemySpawn = 0;
+            }
+
+            update() {
+                if (!this.isRunning) return;
+
+                // Spawn enemies
+                if (Date.now() - this.lastEnemySpawn > 2000) {
+                    this.enemies.push({
+                        x: Math.random() * (this.canvas.width - 30),
+                        y: -30,
+                        width: 30,
+                        height: 30,
+                        speed: 2
+                    });
+                    this.lastEnemySpawn = Date.now();
+                }
+
+                // Update bullets
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    this.bullets[i].y -= 5;
+                    if (this.bullets[i].y < 0) {
+                        this.bullets.splice(i, 1);
+                    }
+                }
+
+                // Update enemies
+                for (let i = this.enemies.length - 1; i >= 0; i--) {
+                    this.enemies[i].y += this.enemies[i].speed;
+                    if (this.enemies[i].y > this.canvas.height) {
+                        this.enemies.splice(i, 1);
+                    }
+                }
+
+                // Check collisions
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    for (let j = this.enemies.length - 1; j >= 0; j--) {
+                        if (this.checkCollision(this.bullets[i], this.enemies[j])) {
+                            this.bullets.splice(i, 1);
+                            this.enemies.splice(j, 1);
+                            this.score += 10;
+                        }
+                    }
+                }
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw player
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
+
+                // Draw bullets
+                this.ctx.fillStyle = '#FFFF00';
+                for (let bullet of this.bullets) {
+                    this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                }
+
+                // Draw enemies
+                this.ctx.fillStyle = '#FF0000';
+                for (let enemy of this.enemies) {
+                    this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                }
+
+                this.ctx.fillStyle = '#000';
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+            }
+
+            checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+
+            shoot() {
+                this.bullets.push({
+                    x: this.player.x + this.player.width / 2 - 2,
+                    y: this.player.y,
+                    width: 4,
+                    height: 10
+                });
+            }
+        }
+
+        // Racing Game
+        class RacingGame extends BaseGame {
+            constructor(canvas, ctx, analysis) {
+                super(canvas, ctx, analysis);
+                this.car = { x: 200, y: 450, width: 40, height: 60 };
+                this.roadY = 0;
+                this.obstacles = [];
+                this.lastObstacleSpawn = 0;
+            }
+
+            update() {
+                if (!this.isRunning) return;
+
+                // Move road
+                this.roadY += 3;
+                if (this.roadY > 50) this.roadY = 0;
+
+                // Spawn obstacles
+                if (Date.now() - this.lastObstacleSpawn > 1500) {
+                    this.obstacles.push({
+                        x: Math.random() * (this.canvas.width - 60) + 30,
+                        y: -60,
+                        width: 40,
+                        height: 60
+                    });
+                    this.lastObstacleSpawn = Date.now();
+                }
+
+                // Update obstacles
+                for (let i = this.obstacles.length - 1; i >= 0; i--) {
+                    this.obstacles[i].y += 4;
+                    if (this.obstacles[i].y > this.canvas.height) {
+                        this.obstacles.splice(i, 1);
+                        this.score += 5;
+                    }
+                }
+
+                // Check collisions
+                for (let obstacle of this.obstacles) {
+                    if (this.checkCollision(this.car, obstacle)) {
+                        this.reset();
+                    }
+                }
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw road
+                this.ctx.fillStyle = '#333';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw road lines
+                this.ctx.strokeStyle = '#FFF';
+                this.ctx.lineWidth = 3;
+                for (let i = -50; i < this.canvas.height + 50; i += 50) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.canvas.width / 2, i + this.roadY);
+                    this.ctx.lineTo(this.canvas.width / 2, i + this.roadY + 25);
+                    this.ctx.stroke();
+                }
+
+                // Draw obstacles
+                this.ctx.fillStyle = '#FF0000';
+                for (let obstacle of this.obstacles) {
+                    this.ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                }
+
+                // Draw car
+                this.ctx.fillStyle = '#00FF00';
+                this.ctx.fillRect(this.car.x, this.car.y, this.car.width, this.car.height);
+
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+            }
+
+            checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+        }
+
+        // Generic Game
+        class GenericGame extends BaseGame {
+            constructor(canvas, ctx, analysis) {
+                super(canvas, ctx, analysis);
+                this.particles = [];
+                this.lastParticleSpawn = 0;
+            }
+
+            update() {
+                if (!this.isRunning) return;
+
+                // Spawn particles
+                if (Date.now() - this.lastParticleSpawn > 100) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4,
+                        life: 100
+                    });
+                    this.lastParticleSpawn = Date.now();
+                }
+
+                // Update particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    let particle = this.particles[i];
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.life--;
+
+                    if (particle.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            render() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw particles
+                for (let particle of this.particles) {
+                    this.ctx.fillStyle = `rgba(102, 126, 234, ${particle.life / 100})`;
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+                this.ctx.fillStyle = '#000';
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText(`Score: ${this.score}`, 10, 30);
+            }
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (window.gameGenerator && window.gameGenerator.game) {
+                window.gameGenerator.game.handleKeyPress(e.key);
+            }
+        });
+
+        // Initialize the AI Game Generator
+        document.addEventListener('DOMContentLoaded', () => {
+            window.gameGenerator = new AIGameGenerator();
+        });
+    </script>
+</body>
+</html>

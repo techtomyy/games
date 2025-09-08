@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -42,66 +41,74 @@ export default function Gallery() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [publicGames, setPublicGames] = useState<PublicGame[]>([]);
+  const [userGames, setUserGames] = useState<Game[]>([]);
 
-  // Redirect to login if not authenticated
+  // Load mock data from localStorage
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
+    if (isAuthenticated) {
+      // Load public games
+      const savedPublicGames = localStorage.getItem('drawplay-public-games');
+      if (savedPublicGames) {
+        setPublicGames(JSON.parse(savedPublicGames));
+      } else {
+        // Create some mock public games
+        const mockPublicGames: PublicGame[] = [
+          {
+            id: 'public-1',
+            title: 'Dragon Quest',
+            gameType: 'platformer',
+            likes: 234,
+            plays: 1200,
+            createdAt: new Date().toISOString(),
+            creator: { firstName: 'Emma', profileImageUrl: '' },
+          },
+          {
+            id: 'public-2',
+            title: 'Super Speedster',
+            gameType: 'racing',
+            likes: 189,
+            plays: 800,
+            createdAt: new Date().toISOString(),
+            creator: { firstName: 'Alex', profileImageUrl: '' },
+          },
+        ];
+        setPublicGames(mockPublicGames);
+        localStorage.setItem('drawplay-public-games', JSON.stringify(mockPublicGames));
+      }
+
+      // Load user games
+      const savedUserGames = localStorage.getItem('drawplay-games');
+      if (savedUserGames) {
+        setUserGames(JSON.parse(savedUserGames));
+      }
     }
-  }, [isAuthenticated, isLoading, toast]);
+  }, [isAuthenticated]);
 
-  // Fetch public games
-  const { data: publicGames = [], isLoading: publicGamesLoading } = useQuery<PublicGame[]>({
-    queryKey: ["/api/games/public"],
-    enabled: isAuthenticated,
-  });
-
-  // Fetch user's games
-  const { data: userGames = [], isLoading: userGamesLoading } = useQuery<Game[]>({
-    queryKey: ["/api/games"],
-    enabled: isAuthenticated,
-  });
-
-  // Like game mutation
-  const likeMutation = useMutation({
-    mutationFn: async (gameId: string) => {
-      await apiRequest("POST", `/api/games/${gameId}/like`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/games/public"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/games"] });
+  // Like game function
+  const handleLikeGame = (gameId: string) => {
+    // Update local state
+    setPublicGames(prevGames => 
+      prevGames.map(game => 
+        game.id === gameId 
+          ? { ...game, likes: (game.likes || 0) + 1 }
+          : game
+      )
+    );
+    
+    // Save to localStorage
+    const updatedGames = publicGames.map(game => 
+      game.id === gameId 
+        ? { ...game, likes: (game.likes || 0) + 1 }
+        : game
+    );
+    localStorage.setItem('drawplay-public-games', JSON.stringify(updatedGames));
+    
       toast({
         title: "Liked!",
         description: "Thanks for showing love to this creator!",
       });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to like game",
-        variant: "destructive",
-      });
-    },
-  });
+  };
 
   const shareGame = (game: Game) => {
     const url = `${window.location.origin}/game/${game.id}`;
@@ -187,8 +194,8 @@ export default function Gallery() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => likeMutation.mutate(game.id)}
-                  disabled={likeMutation.isPending}
+                  onClick={() => handleLikeGame(game.id)}
+                  disabled={false}
                   data-testid={`button-like-${game.id}`}
                 >
                   <Heart size={14} />
@@ -278,8 +285,8 @@ export default function Gallery() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => likeMutation.mutate(game.id)}
-                  disabled={likeMutation.isPending}
+                  onClick={() => handleLikeGame(game.id)}
+                  disabled={false}
                   data-testid={`button-like-${game.id}`}
                 >
                   <Heart size={14} />
@@ -399,7 +406,7 @@ export default function Gallery() {
 
           {/* Community Games */}
           <TabsContent value="community">
-            {publicGamesLoading ? (
+            {false ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <Card key={i} className="animate-pulse">
@@ -439,7 +446,7 @@ export default function Gallery() {
 
           {/* My Games */}
           <TabsContent value="my-games">
-            {userGamesLoading ? (
+            {false ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map((i) => (
                   <Card key={i} className="animate-pulse">

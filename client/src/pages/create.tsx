@@ -1,14 +1,45 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+
+// Local interfaces since we removed shared schema
+interface Drawing {
+  id: string;
+  imageData: string;
+  createdAt: string;
+}
+
+interface AnalysisResult {
+  characterType: string;
+  suggestedGameTypes: string[];
+  animationFrames: number;
+  physicsProperties: {
+    mass: number;
+    bounce: number;
+    friction: number;
+  };
+  abilities: string[];
+}
+
+interface Game {
+  id: string;
+  title: string;
+  gameType: string;
+  gameData: any;
+  spriteData?: string;
+  isPublic: boolean;
+  likes: number;
+  plays: number;
+  createdAt: string;
+}
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import DrawingCanvas from "@/components/drawing-canvas";
 import GamePreview from "@/components/game-preview";
 import GameTypesGrid from "@/components/game-types-grid";
+import CreationProgress from "@/components/creation-progress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,9 +54,10 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  Lightbulb
+  Lightbulb,
+  ImageIcon,
+  Plus
 } from "lucide-react";
-import type { Drawing, Game } from "@shared/schema";
 
 interface AnalysisResult {
   characterType: string;
@@ -50,6 +82,15 @@ export default function Create() {
   const [selectedGameType, setSelectedGameType] = useState<string>('');
   const [gameTitle, setGameTitle] = useState<string>('');
   const [generatedGame, setGeneratedGame] = useState<Game | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const stepNames = [
+    "Draw Character",
+    "Analyze Drawing", 
+    "Choose Game Type",
+    "Generate Game",
+    "Play & Share"
+  ];
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -66,124 +107,116 @@ export default function Create() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Save drawing mutation
-  const saveDrawingMutation = useMutation({
-    mutationFn: async (imageData: string) => {
-      const response = await apiRequest("POST", "/api/drawings", {
+  // Save drawing function
+  const saveDrawing = (imageData: string) => {
+    const drawing: Drawing = {
+      id: `drawing-${Date.now()}`,
         title: "New Drawing",
         imageData,
-      });
-      return response.json() as Promise<Drawing>;
-    },
-    onSuccess: (drawing) => {
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Save to localStorage
+    const savedDrawings = JSON.parse(localStorage.getItem('drawplay-drawings') || '[]');
+    savedDrawings.push(drawing);
+    localStorage.setItem('drawplay-drawings', JSON.stringify(savedDrawings));
+    
       setSavedDrawing(drawing);
       toast({
         title: "Drawing Saved",
         description: "Your drawing has been saved successfully!",
       });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to save drawing. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+  };
 
-  // Analyze drawing mutation
-  const analyzeMutation = useMutation({
-    mutationFn: async (imageData: string) => {
-      const response = await apiRequest("POST", "/api/analyze-drawing", {
-        imageData,
-      });
-      return response.json() as Promise<AnalysisResult>;
-    },
-    onSuccess: (analysisResult) => {
-      setAnalysis(analysisResult);
+  // Analyze drawing function
+  const analyzeDrawing = async (imageData: string) => {
+    setIsProcessing(true);
+    
+    // Simulate AI analysis delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Mock analysis - in a real app, this would call an AI service
+    const mockAnalysis: AnalysisResult = {
+      characterType: "hero",
+      suggestedGameTypes: ["platformer", "racing", "battle"],
+      animationFrames: 4,
+      physicsProperties: {
+        mass: 1.0,
+        bounce: 0.3,
+        friction: 0.8,
+      },
+      abilities: ["jump", "run", "attack"],
+    };
+    
+    setAnalysis(mockAnalysis);
       setStep(3);
+    setIsProcessing(false);
       toast({
         title: "Analysis Complete!",
-        description: `Detected a ${analysisResult.characterType}. Choose your game type!`,
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Analysis Failed",
-        description: "Unable to analyze your drawing. Please try a clearer drawing.",
-        variant: "destructive",
-      });
-    },
-  });
+      description: `Detected a ${mockAnalysis.characterType}. Choose your game type!`,
+    });
+  };
 
-  // Generate game mutation
-  const generateGameMutation = useMutation({
-    mutationFn: async ({ drawingId, gameType, title }: { drawingId: string; gameType: string; title: string }) => {
-      const response = await apiRequest("POST", "/api/generate-game", {
-        drawingId,
+  // Generate game function
+  const generateGame = async ({ drawingId, gameType, title }: { drawingId: string; gameType: string; title: string }) => {
+    console.log('Starting game generation:', { drawingId, gameType, title });
+    setIsProcessing(true);
+    setStep(4);
+    
+    // Simulate game generation delay
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Generate game data that works with our game engine
+    const mockGame: Game = {
+      id: `game-${Date.now()}`,
+      title: title || `${gameType} Game`,
+      gameType,
+      gameData: {
         gameType,
-        title,
-      });
-      return response.json() as Promise<Game>;
-    },
-    onSuccess: (game) => {
-      setGeneratedGame(game);
-      queryClient.invalidateQueries({ queryKey: ["/api/games"] });
+        playerSprite: savedDrawing?.imageData,
+        characterAnalysis: analysis || {
+          characterType: "hero",
+          suggestedGameTypes: [gameType],
+          animationFrames: 4,
+          physicsProperties: {
+            mass: 1.0,
+            bounce: 0.3,
+            friction: 0.8,
+          },
+          abilities: ["jump", "run", "attack"],
+        },
+        levels: [
+          { name: "Level 1", difficulty: "easy" },
+          { name: "Level 2", difficulty: "medium" },
+        ],
+      },
+      spriteData: JSON.stringify({
+        frames: {
+          idle: [savedDrawing?.imageData || ''],
+          walk: [savedDrawing?.imageData || ''],
+        },
+        dimensions: { width: 64, height: 64 }
+      }),
+      isPublic: false,
+      likes: 0,
+      plays: 0,
+      createdAt: new Date().toISOString(),
+    };
+    
+    // Save to localStorage
+    const savedGames = JSON.parse(localStorage.getItem('drawplay-games') || '[]');
+    savedGames.push(mockGame);
+    localStorage.setItem('drawplay-games', JSON.stringify(savedGames));
+    
+    console.log('Game generated successfully:', mockGame);
+    setGeneratedGame(mockGame);
+    setStep(5);
+    setIsProcessing(false);
       toast({
         title: "Game Generated!",
         description: "Your game is ready to play!",
       });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      
-      if (error.message.includes("Monthly game limit reached")) {
-        toast({
-          title: "Limit Reached",
-          description: "You've reached your monthly game limit. Upgrade to create more!",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Generation Failed",
-          description: "Failed to generate your game. Please try again.",
-          variant: "destructive",
-        });
-      }
-    },
-  });
+  };
 
   const handleDrawingChange = (imageData: string) => {
     setCurrentDrawing(imageData);
@@ -200,11 +233,11 @@ export default function Create() {
     }
 
     // Save drawing first
-    saveDrawingMutation.mutate(currentDrawing);
+    saveDrawing(currentDrawing);
     
     // Then analyze it
     setStep(2);
-    analyzeMutation.mutate(currentDrawing);
+    analyzeDrawing(currentDrawing);
   };
 
   const handleGameTypeSelect = (gameType: string) => {
@@ -214,8 +247,11 @@ export default function Create() {
     }
   };
 
-  const handleGenerateGame = () => {
+  const handleGenerateGame = async () => {
+    console.log('Generate game clicked:', { savedDrawing, selectedGameType, gameTitle });
+    
     if (!savedDrawing || !selectedGameType) {
+      console.log('Missing information:', { savedDrawing: !!savedDrawing, selectedGameType });
       toast({
         title: "Missing Information",
         description: "Please complete all steps first.",
@@ -224,8 +260,8 @@ export default function Create() {
       return;
     }
 
-    setStep(4);
-    generateGameMutation.mutate({
+    console.log('Calling generateGame...');
+    await generateGame({
       drawingId: savedDrawing.id,
       gameType: selectedGameType,
       title: gameTitle || `My ${selectedGameType} Game`,
@@ -290,41 +326,28 @@ export default function Create() {
       <Header />
       
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="flex items-center space-x-4">
-            {[1, 2, 3, 4].map((stepNum) => (
-              <div key={stepNum} className="flex items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                  step >= stepNum 
-                    ? stepNum === 1 ? 'bg-coral text-white' 
-                      : stepNum === 2 ? 'bg-turquoise text-white'
-                      : stepNum === 3 ? 'bg-gold text-white'
-                      : 'bg-orange text-white'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  {step > stepNum ? <CheckCircle size={20} /> : stepNum}
-                </div>
-                {stepNum < 4 && (
-                  <ArrowRight className={`mx-2 ${step > stepNum ? 'text-primary' : 'text-muted-foreground'}`} size={16} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Progress Indicator */}
+        <CreationProgress 
+          currentStep={step}
+          totalSteps={stepNames.length}
+          stepNames={stepNames}
+          isProcessing={isProcessing}
+        />
 
         <div className="text-center mb-8">
           <h1 className="font-heading text-3xl md:text-4xl text-primary mb-2" data-testid="create-title">
             {step === 1 && "Draw Your Character"}
-            {step === 2 && "Analyzing Your Drawing..."}
+            {step === 2 && isProcessing ? "Analyzing Your Drawing..." : "Drawing Analyzed!"}
             {step === 3 && "Choose Your Game Type"}
-            {step === 4 && "Generating Your Game..."}
+            {step === 4 && isProcessing ? "Generating Your Game..." : "Game Generated!"}
+            {step === 5 && "Your Game is Ready!"}
           </h1>
           <p className="text-muted-foreground">
             {step === 1 && "Create your character and bring it to life!"}
-            {step === 2 && "Our AI is analyzing your drawing to understand your character"}
+            {step === 2 && isProcessing ? "Our AI is analyzing your drawing to understand your character" : "Great! We've analyzed your character. Now choose a game type."}
             {step === 3 && "Pick the perfect game type for your character"}
-            {step === 4 && "Sit back while we create your personalized game"}
+            {step === 4 && isProcessing ? "Sit back while we create your personalized game" : "Perfect! Your game has been created. Let's play it!"}
+            {step === 5 && "Your game is ready to play! You can also share it with others."}
           </p>
         </div>
 
@@ -341,11 +364,11 @@ export default function Create() {
               <div className="mt-6 text-center">
                 <Button
                   onClick={handleSaveAndAnalyze}
-                  disabled={!currentDrawing || saveDrawingMutation.isPending}
+                  disabled={!currentDrawing}
                   className="btn-coral"
                   data-testid="button-analyze-drawing"
                 >
-                  {saveDrawingMutation.isPending ? (
+                  {false ? (
                     <>
                       <Loader2 className="mr-2 animate-spin" />
                       Saving...
@@ -489,9 +512,19 @@ export default function Create() {
         {/* Step 4: Game Generation & Preview */}
         {step === 4 && (
           <div className="max-w-4xl mx-auto">
+            {isProcessing ? (
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-coral rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Loader2 className="text-white animate-spin" size={40} />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Generating Your Game...</h3>
+                <p className="text-muted-foreground">This may take a few seconds</p>
+              </div>
+            ) : (
+              <>
             <GamePreview
               game={generatedGame || undefined}
-              isGenerating={generateGameMutation.isPending}
+                  isGenerating={false}
               onPlay={() => generatedGame && window.open(`/game/${generatedGame.id}`, '_blank')}
             />
             
@@ -514,11 +547,84 @@ export default function Create() {
                 </Button>
               </div>
             )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Step 5: Game Complete */}
+        {step === 5 && generatedGame && (
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="text-white" size={40} />
+              </div>
+              <h2 className="font-heading text-2xl text-primary mb-2">Congratulations!</h2>
+              <p className="text-muted-foreground">
+                Your game "{generatedGame.title}" has been created successfully!
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Game Preview */}
+              <div>
+                <h3 className="font-semibold text-foreground mb-4">Your Game</h3>
+                <GamePreview 
+                  game={generatedGame}
+                  onPlay={() => console.log('Playing game')}
+                  onLike={() => console.log('Liking game')}
+                  onShare={() => console.log('Sharing game')}
+                />
+              </div>
+
+              {/* Game Stats & Actions */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Game Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Game Type:</span>
+                      <span className="font-medium capitalize">{generatedGame.gameType}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Character Type:</span>
+                      <span className="font-medium">{analysis?.characterType || 'Hero'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Created:</span>
+                      <span className="font-medium">{new Date().toLocaleDateString()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>What's Next?</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Button className="w-full btn-coral" onClick={() => console.log('Play game')}>
+                      <Play className="mr-2" size={16} />
+                      Play Your Game
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => window.location.href = '/gallery'}>
+                      <ImageIcon className="mr-2" size={16} />
+                      View in Gallery
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={resetWorkflow}>
+                      <Plus className="mr-2" size={16} />
+                      Create Another Game
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Navigation */}
-        {step > 1 && step < 4 && (
+        {step > 1 && step < 5 && (
           <div className="flex justify-center mt-8">
             <Button
               onClick={() => setStep(Math.max(1, step - 1))}

@@ -1,10 +1,7 @@
-import { useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
@@ -23,66 +20,61 @@ import {
   Target,
   Trophy
 } from "lucide-react";
-import type { Game, Drawing } from "@shared/schema";
+
+interface Game {
+  id: string;
+  title: string;
+  gameType: string;
+  likes: number;
+  plays: number;
+  createdAt: string;
+}
+
+interface Drawing {
+  id: string;
+  title: string;
+  createdAt: string;
+}
 
 export default function Home() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const [games, setGames] = useState<Game[]>([]);
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
 
-  // Redirect to login if not authenticated
+  // Load mock data from localStorage
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
-
-  // Fetch user's games
-  const { data: games = [], isLoading: gamesLoading } = useQuery<Game[]>({
-    queryKey: ["/api/games"],
-    enabled: isAuthenticated,
-  });
-
-  // Fetch user's drawings
-  const { data: drawings = [], isLoading: drawingsLoading } = useQuery<Drawing[]>({
-    queryKey: ["/api/drawings"],
-    enabled: isAuthenticated,
-  });
-
-  // Like game mutation
-  const likeMutation = useMutation({
-    mutationFn: async (gameId: string) => {
-      await apiRequest("POST", `/api/games/${gameId}/like`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/games"] });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
+    if (isAuthenticated) {
+      const savedGames = localStorage.getItem('drawplay-games');
+      const savedDrawings = localStorage.getItem('drawplay-drawings');
+      
+      if (savedGames) {
+        setGames(JSON.parse(savedGames));
       }
-      toast({
-        title: "Error",
-        description: "Failed to like game",
-        variant: "destructive",
-      });
-    },
-  });
+      if (savedDrawings) {
+        setDrawings(JSON.parse(savedDrawings));
+      }
+    }
+  }, [isAuthenticated]);
+
+  // Like game function
+  const handleLikeGame = (gameId: string) => {
+    setGames(prevGames => 
+      prevGames.map(game => 
+        game.id === gameId 
+          ? { ...game, likes: game.likes + 1 }
+          : game
+      )
+    );
+    
+    // Save to localStorage
+    const updatedGames = games.map(game => 
+      game.id === gameId 
+        ? { ...game, likes: game.likes + 1 }
+        : game
+    );
+    localStorage.setItem('drawplay-games', JSON.stringify(updatedGames));
+  };
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -255,7 +247,7 @@ export default function Home() {
               </Link>
             </div>
             
-            {gamesLoading ? (
+            {false ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <Card key={i} className="animate-pulse">
@@ -308,8 +300,7 @@ export default function Home() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => likeMutation.mutate(game.id)}
-                            disabled={likeMutation.isPending}
+                            onClick={() => handleLikeGame(game.id)}
                             data-testid={`button-like-${game.id}`}
                           >
                             <Heart size={14} />

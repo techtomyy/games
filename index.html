@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrawPlay Universe - Drawing Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .game-container {
+            flex: 1;
+            display: flex;
+            padding: 2rem;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .toolbar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            height: fit-content;
+            min-width: 250px;
+        }
+
+        .tool-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .tool-section h3 {
+            color: #333;
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.3rem;
+        }
+
+        .tool-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tool-btn {
+            padding: 0.8rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid transparent;
+        }
+
+        .tool-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .tool-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #5a6fd8;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .color-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: #333;
+            transform: scale(1.2);
+        }
+
+        .size-slider {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #drawingCanvas {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: crosshair;
+            display: block;
+            background: white;
+            width: 100%;
+            height: 600px;
+        }
+
+        .game-modes {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .mode-btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .game-info {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            height: fit-content;
+            min-width: 250px;
+        }
+
+        .score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .timer {
+            font-size: 1.2rem;
+            color: #e74c3c;
+            margin-bottom: 1rem;
+        }
+
+        .challenge-word {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .control-btn {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: #667eea;
+            color: white;
+        }
+
+        .control-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-1px);
+        }
+
+        .control-btn.secondary {
+            background: #6c757d;
+        }
+
+        .control-btn.secondary:hover {
+            background: #5a6268;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+                padding: 1rem;
+            }
+            
+            .toolbar, .game-info {
+                min-width: auto;
+            }
+            
+            #drawingCanvas {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 DrawPlay Universe</h1>
+        <p>Create amazing drawings and play interactive games!</p>
+    </div>
+
+    <div class="game-container">
+        <div class="toolbar">
+            <div class="tool-section">
+                <h3>🎮 Game Mode</h3>
+                <div class="game-modes">
+                    <button class="mode-btn active" data-mode="free">Free Draw</button>
+                    <button class="mode-btn" data-mode="challenge">Challenge</button>
+                    <button class="mode-btn" data-mode="guess">Guess Game</button>
+                </div>
+            </div>
+
+            <div class="tool-section">
+                <h3>🖌️ Tools</h3>
+                <div class="tool-group">
+                    <button class="tool-btn active" data-tool="brush">Brush</button>
+                    <button class="tool-btn" data-tool="eraser">Eraser</button>
+                    <button class="tool-btn" data-tool="fill">Fill</button>
+                </div>
+            </div>
+
+            <div class="tool-section">
+                <h3>🎨 Colors</h3>
+                <div class="color-palette">
+                    <button class="color-btn active" style="background: #000000" data-color="#000000"></button>
+                    <button class="color-btn" style="background: #ff0000" data-color="#ff0000"></button>
+                    <button class="color-btn" style="background: #00ff00" data-color="#00ff00"></button>
+                    <button class="color-btn" style="background: #0000ff" data-color="#0000ff"></button>
+                    <button class="color-btn" style="background: #ffff00" data-color="#ffff00"></button>
+                    <button class="color-btn" style="background: #ff00ff" data-color="#ff00ff"></button>
+                    <button class="color-btn" style="background: #00ffff" data-color="#00ffff"></button>
+                    <button class="color-btn" style="background: #ffa500" data-color="#ffa500"></button>
+                    <button class="color-btn" style="background: #800080" data-color="#800080"></button>
+                    <button class="color-btn" style="background: #ffc0cb" data-color="#ffc0cb"></button>
+                    <button class="color-btn" style="background: #a52a2a" data-color="#a52a2a"></button>
+                    <button class="color-btn" style="background: #808080" data-color="#808080"></button>
+                </div>
+            </div>
+
+            <div class="tool-section">
+                <h3>📏 Brush Size</h3>
+                <input type="range" class="size-slider" id="brushSize" min="1" max="50" value="5">
+                <div id="sizeDisplay">Size: 5px</div>
+            </div>
+
+            <div class="tool-section">
+                <h3>🎯 Controls</h3>
+                <div class="controls">
+                    <button class="control-btn" id="clearCanvas">Clear</button>
+                    <button class="control-btn" id="saveDrawing">Save</button>
+                    <button class="control-btn" id="loadDrawing">Load</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="drawingCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <div class="game-info">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="timer" id="timer" style="display: none;">Time: <span id="timeLeft">60</span>s</div>
+            <div class="challenge-word" id="challengeWord" style="display: none;">Draw: <span id="wordToDraw"></span></div>
+            
+            <div class="tool-section">
+                <h3>🎯 Game Rules</h3>
+                <div id="gameRules">
+                    <p><strong>Free Draw:</strong> Draw anything you want!</p>
+                    <p><strong>Challenge:</strong> Draw the given word within the time limit.</p>
+                    <p><strong>Guess Game:</strong> Draw something and let others guess!</p>
+                </div>
+            </div>
+
+            <div class="tool-section">
+                <h3>🏆 Achievements</h3>
+                <div id="achievements">
+                    <p>🎨 First Drawing</p>
+                    <p>⏰ Speed Artist</p>
+                    <p>🎯 Perfect Match</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>DrawPlay Universe - Where creativity meets gaming! 🎨✨</p>
+    </div>
+
+    <script>
+        class DrawingGame {
+            constructor() {
+                this.canvas = document.getElementById('drawingCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isDrawing = false;
+                this.currentTool = 'brush';
+                this.currentColor = '#000000';
+                this.currentSize = 5;
+                this.score = 0;
+                this.gameMode = 'free';
+                this.timeLeft = 60;
+                this.timer = null;
+                this.challengeWords = [
+                    'Cat', 'House', 'Tree', 'Car', 'Sun', 'Flower', 'Fish', 'Bird', 
+                    'Mountain', 'Ocean', 'Pizza', 'Robot', 'Heart', 'Star', 'Rainbow'
+                ];
+                this.currentWord = '';
+                
+                this.init();
+            }
+
+            init() {
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.updateDisplay();
+            }
+
+            setupCanvas() {
+                this.ctx.lineCap = 'round';
+                this.ctx.lineJoin = 'round';
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            setupEventListeners() {
+                // Canvas events
+                this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+                this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+                this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+                this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+
+                // Touch events for mobile
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+
+                this.canvas.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    const mouseEvent = new MouseEvent('mouseup', {});
+                    this.canvas.dispatchEvent(mouseEvent);
+                });
+
+                // Tool buttons
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentTool = e.target.dataset.tool;
+                    });
+                });
+
+                // Color buttons
+                document.querySelectorAll('.color-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentColor = e.target.dataset.color;
+                    });
+                });
+
+                // Mode buttons
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.gameMode = e.target.dataset.mode;
+                        this.switchGameMode();
+                    });
+                });
+
+                // Brush size slider
+                document.getElementById('brushSize').addEventListener('input', (e) => {
+                    this.currentSize = parseInt(e.target.value);
+                    document.getElementById('sizeDisplay').textContent = `Size: ${this.currentSize}px`;
+                });
+
+                // Control buttons
+                document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
+                document.getElementById('saveDrawing').addEventListener('click', () => this.saveDrawing());
+                document.getElementById('loadDrawing').addEventListener('click', () => this.loadDrawing());
+            }
+
+            startDrawing(e) {
+                this.isDrawing = true;
+                const rect = this.canvas.getBoundingClientRect();
+                this.lastX = e.clientX - rect.left;
+                this.lastY = e.clientY - rect.top;
+            }
+
+            draw(e) {
+                if (!this.isDrawing) return;
+
+                const rect = this.canvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.lastX, this.lastY);
+                this.ctx.lineTo(currentX, currentY);
+                this.ctx.strokeStyle = this.currentColor;
+                this.ctx.lineWidth = this.currentSize;
+                this.ctx.stroke();
+
+                this.lastX = currentX;
+                this.lastY = currentY;
+
+                // Add score for drawing
+                if (this.gameMode === 'free') {
+                    this.addScore(1);
+                }
+            }
+
+            stopDrawing() {
+                this.isDrawing = false;
+            }
+
+            clearCanvas() {
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            switchGameMode() {
+                this.stopTimer();
+                
+                switch (this.gameMode) {
+                    case 'free':
+                        document.getElementById('timer').style.display = 'none';
+                        document.getElementById('challengeWord').style.display = 'none';
+                        this.updateGameRules('Free Draw: Draw anything you want!');
+                        break;
+                    case 'challenge':
+                        document.getElementById('timer').style.display = 'block';
+                        document.getElementById('challengeWord').style.display = 'block';
+                        this.startChallenge();
+                        this.updateGameRules('Challenge: Draw the given word within the time limit!');
+                        break;
+                    case 'guess':
+                        document.getElementById('timer').style.display = 'none';
+                        document.getElementById('challengeWord').style.display = 'none';
+                        this.updateGameRules('Guess Game: Draw something and let others guess what it is!');
+                        break;
+                }
+            }
+
+            startChallenge() {
+                this.currentWord = this.challengeWords[Math.floor(Math.random() * this.challengeWords.length)];
+                document.getElementById('wordToDraw').textContent = this.currentWord;
+                this.timeLeft = 60;
+                this.startTimer();
+            }
+
+            startTimer() {
+                this.timer = setInterval(() => {
+                    this.timeLeft--;
+                    document.getElementById('timeLeft').textContent = this.timeLeft;
+                    
+                    if (this.timeLeft <= 0) {
+                        this.stopTimer();
+                        alert(`Time's up! The word was: ${this.currentWord}`);
+                        this.addScore(10);
+                        this.startChallenge();
+                    }
+                }, 1000);
+            }
+
+            stopTimer() {
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+            }
+
+            addScore(points) {
+                this.score += points;
+                document.getElementById('score').textContent = this.score;
+            }
+
+            updateGameRules(rules) {
+                document.getElementById('gameRules').innerHTML = `<p><strong>${rules}</strong></p>`;
+            }
+
+            saveDrawing() {
+                const dataURL = this.canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `drawing-${Date.now()}.png`;
+                link.href = dataURL;
+                link.click();
+                this.addScore(5);
+            }
+
+            loadDrawing() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                                this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+                            };
+                            img.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                };
+                input.click();
+            }
+
+            updateDisplay() {
+                document.getElementById('sizeDisplay').textContent = `Size: ${this.currentSize}px`;
+            }
+        }
+
+        // Initialize the game when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new DrawingGame();
+        });
+    </script>
+</body>
+</html>

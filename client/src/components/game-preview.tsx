@@ -1,7 +1,18 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Heart, Share2, ExternalLink, Loader2 } from "lucide-react";
-import type { Game } from "@shared/schema";
+import GameEngine from "./game-engine";
+
+interface Game {
+  id: string;
+  title: string;
+  gameType: string;
+  gameData: any;
+  spriteData?: string;
+  likes?: number;
+  plays?: number;
+  createdAt?: string;
+}
 
 interface GamePreviewProps {
   game?: Game;
@@ -107,45 +118,14 @@ export default function GamePreview({
         </div>
       </div>
       
-      {/* Game Preview Area */}
-      <div className="game-preview rounded-lg h-64 flex items-center justify-center border-2 border-border mb-4 relative overflow-hidden">
-        {/* Simple game preview visualization */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-green-400/20">
-          {/* Character sprite preview */}
-          {game.spriteData && (
-            <div className="absolute bottom-8 left-8 w-16 h-16 bg-white rounded-lg shadow-lg flex items-center justify-center">
-              <span className="text-2xl" data-testid="sprite-preview">🎮</span>
-            </div>
-          )}
-          
-          {/* Simple platformer elements */}
-          {game.gameType === 'platformer' && (
-            <>
-              <div className="absolute bottom-0 left-0 right-0 h-12 bg-green-500/30 rounded-t-lg"></div>
-              <div className="absolute bottom-12 left-32 w-24 h-3 bg-brown-400/40 rounded"></div>
-              <div className="absolute bottom-20 right-16 w-16 h-3 bg-brown-400/40 rounded"></div>
-            </>
-          )}
-
-          {/* Racing track elements */}
-          {game.gameType === 'racing' && (
-            <>
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gray-400/30 rounded-t-lg"></div>
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-1 h-8 bg-yellow-400/60"></div>
-            </>
-          )}
-
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Button
-              onClick={onPlay}
-              className="btn-coral"
-              data-testid="button-play-game"
-            >
-              <Play size={20} className="mr-2" />
-              Play Game
-            </Button>
-          </div>
-        </div>
+      {/* Game Engine */}
+      <div className="mb-4">
+        <GameEngine 
+          gameData={game.gameData} 
+          onGameEnd={(score) => {
+            console.log('Game ended with score:', score);
+          }}
+        />
       </div>
 
       {/* Game Stats */}

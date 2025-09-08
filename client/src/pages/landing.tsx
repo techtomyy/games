@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import GameTypesGrid from "@/components/game-types-grid";
+import AuthForm from "@/components/auth-form";
 import { 
   Play, 
   Video, 
@@ -20,6 +21,8 @@ import {
 } from "lucide-react";
 
 export default function Landing() {
+  const [showAuth, setShowAuth] = useState(false);
+
   useEffect(() => {
     // Simple scroll animation for elements
     const observerOptions = {
@@ -46,6 +49,23 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <Header />
       
+      {/* Auth Modal */}
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute -top-2 -right-2 z-10"
+              onClick={() => setShowAuth(false)}
+            >
+              ✕
+            </Button>
+            <AuthForm />
+          </div>
+        </div>
+      )}
+      
       {/* Hero Section */}
       <section className="py-20 bg-gradient-to-br from-cream via-background to-secondary">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -63,7 +83,7 @@ export default function Landing() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
                 <Button 
                   className="btn-coral"
-                  onClick={() => window.location.href = '/api/login'}
+                  onClick={() => setShowAuth(true)}
                   data-testid="button-start-drawing"
                 >
                   <Play className="mr-2" />
@@ -77,6 +97,35 @@ export default function Landing() {
                   <Video className="mr-2" />
                   Watch Demo
                 </Button>
+              </div>
+
+              {/* Demo Credentials */}
+              <div className="bg-muted/50 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-foreground mb-3 text-center">🚀 Try It Now - Demo Accounts</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="bg-white rounded-lg p-3 border border-coral/20">
+                    <div className="flex items-center mb-2">
+                      <div className="w-2 h-2 bg-coral rounded-full mr-2"></div>
+                      <span className="font-medium text-foreground">Free Demo</span>
+                    </div>
+                    <div className="text-muted-foreground space-y-1">
+                      <div><strong>Email:</strong> demo@drawplay.com</div>
+                      <div><strong>Password:</strong> demo123</div>
+                      <div className="text-xs">3 games per month</div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 border border-turquoise/20">
+                    <div className="flex items-center mb-2">
+                      <div className="w-2 h-2 bg-turquoise rounded-full mr-2"></div>
+                      <span className="font-medium text-foreground">Pro Demo</span>
+                    </div>
+                    <div className="text-muted-foreground space-y-1">
+                      <div><strong>Email:</strong> pro@drawplay.com</div>
+                      <div><strong>Password:</strong> pro123</div>
+                      <div className="text-xs">Unlimited games</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-center lg:justify-start space-x-6 text-muted-foreground">
@@ -192,7 +241,7 @@ export default function Landing() {
 
           <div className="fade-up">
             <GameTypesGrid 
-              onSelectType={() => window.location.href = '/api/login'} 
+              onSelectType={() => setShowAuth(true)} 
             />
           </div>
         </div>
@@ -246,7 +295,7 @@ export default function Landing() {
           <div className="text-center">
             <Button 
               className="btn-primary"
-              onClick={() => window.location.href = '/api/login'}
+              onClick={() => setShowAuth(true)}
               data-testid="button-view-all-games"
             >
               View All Community Games
@@ -307,7 +356,7 @@ export default function Landing() {
                 <Button 
                   variant="outline" 
                   className="w-full"
-                  onClick={() => window.location.href = '/api/login'}
+                  onClick={() => setShowAuth(true)}
                   data-testid="button-start-free"
                 >
                   Start Free
@@ -363,7 +412,7 @@ export default function Landing() {
 
                 <Button 
                   className="btn-coral w-full"
-                  onClick={() => window.location.href = '/api/login'}
+                  onClick={() => setShowAuth(true)}
                   data-testid="button-start-pro"
                 >
                   Start Pro Trial
