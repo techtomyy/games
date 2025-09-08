@@ -1,14 +1,44 @@
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Palette, User, LogOut, Home, Brush, ImageIcon } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import AuthForm from "./auth-form";
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const [location] = useLocation();
   const [showAuth, setShowAuth] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { toast } = useToast();
+
+  // Close auth modal when user becomes authenticated
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      setShowAuth(false);
+    }
+  }, [isAuthenticated]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast({
+        title: "Logout Error",
+        description: "There was an error logging out. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <>
@@ -26,8 +56,8 @@ export default function Header() {
           
           {isAuthenticated && (
             <nav className="hidden md:flex items-center space-x-8">
-              <Link href="/" data-testid="nav-home">
-                <span className={`flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors ${location === "/" ? "text-foreground" : ""}`}>
+              <Link href="/home" data-testid="nav-home">
+                <span className={`flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors ${location === "/home" ? "text-foreground" : ""}`}>
                   <Home size={16} />
                   <span>Home</span>
                 </span>
@@ -51,30 +81,24 @@ export default function Header() {
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  {user?.profileImageUrl ? (
-                    <img 
-                      src={user.profileImageUrl} 
-                      alt="Profile" 
-                      className="w-8 h-8 rounded-full object-cover"
-                      data-testid="profile-image"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-                      <User size={16} />
-                    </div>
-                  )}
+                  <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                    <User size={16} />
+                  </div>
                   <span className="text-sm font-medium hidden sm:inline" data-testid="user-name">
-                    {user?.firstName || 'Creator'}
+                    {user?.firstname || user?.fullname || 'Creator'}
                   </span>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={logout}
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
                   data-testid="button-logout"
                 >
                   <LogOut size={16} />
-                  <span className="ml-2 hidden sm:inline">Sign Out</span>
+                  <span className="ml-2 hidden sm:inline">
+                    {isLoggingOut ? "Signing Out..." : "Sign Out"}
+                  </span>
                 </Button>
               </div>
             ) : (
@@ -113,7 +137,7 @@ export default function Header() {
           >
             ✕
           </Button>
-          <AuthForm />
+          <AuthForm onSuccess={() => setShowAuth(false)} />
         </div>
       </div>
     )}

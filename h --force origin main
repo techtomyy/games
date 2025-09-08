@@ -1,0 +1,5 @@
+[33mf63ee77[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Fix Windows compatibility issues and update project structure
+[33mb01e03f[m first commit
+[33m813f129[m Address unrecognized JavaScript features and understand warnings
+[33m9b7da1c[m Fix error preventing the application from running
+[33m9ba67a7[m Update button styles to improve visual feedback on hover

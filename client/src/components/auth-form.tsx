@@ -1,17 +1,60 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { User, Zap, Crown, Sparkles } from "lucide-react";
 
-export default function AuthForm() {
+interface AuthFormProps {
+  onSuccess?: () => void;
+}
+
+export default function AuthForm({ onSuccess }: AuthFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const [activeTab, setActiveTab] = useState("login");
+  const [pendingEmail, setPendingEmail] = useState<string>("");
+  const { login, signup, isAuthenticated, resendConfirmation } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  // Handle redirect when user becomes authenticated
+  useEffect(() => {
+    console.log('Auth form useEffect - isAuthenticated:', isAuthenticated);
+    if (isAuthenticated) {
+      console.log('User is authenticated, redirecting to /home');
+      // Small delay to ensure state is fully updated
+      const timer = setTimeout(() => {
+        onSuccess?.();
+        setLocation("/home");
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, onSuccess, setLocation]);
+
+
+  const handleResendConfirmation = async (email: string) => {
+    try {
+      await resendConfirmation(email);
+      toast({
+        title: "Confirmation Email Sent!",
+        description: "Please check your inbox and spam folder for the confirmation email.",
+      });
+    } catch (error: any) {
+      const errorMessage = error.message?.includes(':') 
+        ? error.message.split(': ')[1] 
+        : error.message || "Failed to resend confirmation email.";
+      
+      toast({
+        title: "Failed to Resend",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -22,17 +65,46 @@ export default function AuthForm() {
     const password = formData.get("password") as string;
 
     try {
-      await login(email, password);
+      const response = await login(email, password);
       toast({
         title: "Success!",
-        description: "You've been logged in successfully.",
+        description: response.message || "You've been logged in successfully.",
       });
+      // Redirect will be handled by useEffect when isAuthenticated becomes true
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to log in. Please try again.",
-        variant: "destructive",
-      });
+      // Extract error message from the error
+      const errorMessage = error.message?.includes(':') 
+        ? error.message.split(': ')[1] 
+        : error.message || "Failed to log in. Please try again.";
+      
+      // Check if it's an email confirmation error
+      const isEmailConfirmationError = errorMessage.toLowerCase().includes('email not confirmed') || 
+                                      errorMessage.toLowerCase().includes('confirm your email');
+      
+      if (isEmailConfirmationError) {
+        setPendingEmail(email);
+        toast({
+          title: "Email Confirmation Required",
+          description: errorMessage,
+          variant: "destructive",
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleResendConfirmation(email)}
+              className="ml-2"
+            >
+              Resend Email
+            </Button>
+          ),
+        });
+      } else {
+        toast({
+          title: "Login Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -49,15 +121,22 @@ export default function AuthForm() {
     const lastName = formData.get("lastName") as string;
 
     try {
-      await signup(email, password, firstName, lastName);
+      const response = await signup(email, password, firstName, lastName);
       toast({
-        title: "Success!",
-        description: "Account created! Please check your email to verify your account.",
+        title: "Account Created!",
+        description: "Please check your email to confirm your account before logging in.",
       });
+      // Switch to login tab after successful signup
+      setActiveTab("login");
     } catch (error: any) {
+      // Extract error message from the error
+      const errorMessage = error.message?.includes(':') 
+        ? error.message.split(': ')[1] 
+        : error.message || "Failed to create account. Please try again.";
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to create account. Please try again.",
+        title: "Signup Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -82,10 +161,16 @@ export default function AuthForm() {
           description: "Welcome to the pro demo! Unlimited game creation unlocked.",
         });
       }
+      // Redirect will be handled by useEffect when isAuthenticated becomes true
     } catch (error: any) {
+      // If demo accounts don't exist, show helpful message
+      const errorMessage = error.message?.includes(':') 
+        ? error.message.split(': ')[1] 
+        : error.message || "Demo accounts not available. Please create your own account.";
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to login with demo account.",
+        title: "Demo Login Failed",
+        description: errorMessage + " You can create your own account using the signup form.",
         variant: "destructive",
       });
     } finally {
@@ -146,7 +231,7 @@ export default function AuthForm() {
           </div>
         </div>
 
-        <Tabs defaultValue="login" className="w-full mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
