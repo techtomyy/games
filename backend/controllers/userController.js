@@ -1,4 +1,4 @@
-const { dbHelpers } = require('../config/supabase');
+const { supabase } = require('../config/supabase');
 
 // Get user by ID
 const getUserById = async (req, res) => {
@@ -12,7 +12,12 @@ const getUserById = async (req, res) => {
             });
         }
         
-        const user = await dbHelpers.getUserById(id);
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (error) throw error;
         
         if (!user) {
             return res.status(404).json({ 
@@ -56,7 +61,13 @@ const updateUser = async (req, res) => {
         delete updates.created_at;
         delete updates.password; // Password updates should be handled separately
         
-        const user = await dbHelpers.updateUser(id, updates);
+        const { data: updated, error } = await supabase
+            .from('users')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
         
         if (!user) {
             return res.status(404).json({ 
@@ -66,7 +77,7 @@ const updateUser = async (req, res) => {
         }
         
         // Remove sensitive information
-        const { password, ...userWithoutPassword } = user;
+        const { password, ...userWithoutPassword } = updated;
         
         res.json({
             success: true,
@@ -94,7 +105,12 @@ const getUserProfile = async (req, res) => {
             });
         }
         
-        const user = await dbHelpers.getUserById(id);
+        const { data: user, error: userErr } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', id)
+            .single();
+        if (userErr) throw userErr;
         
         if (!user) {
             return res.status(404).json({ 
@@ -104,7 +120,12 @@ const getUserProfile = async (req, res) => {
         }
         
         // Get user's games count
-        const games = await dbHelpers.getGamesByUserId(id);
+        const { data: games, error: gamesErr } = await supabase
+            .from('games')
+            .select('*')
+            .eq('user_id', id)
+            .order('created_at', { ascending: false });
+        if (gamesErr) throw gamesErr;
         
         // Remove sensitive information
         const { password, ...userWithoutPassword } = user;

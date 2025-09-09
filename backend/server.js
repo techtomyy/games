@@ -7,10 +7,6 @@ const corsMiddleware = require("./middleware/cors");
 const { logger, errorLogger } = require("./middleware/logger");
 const { errorHandler, notFound } = require("./middleware/errorHandler");
 const { sanitizeInput } = require("./middleware/validation");
-
-// Import routes
-const routes = require("./routes");
-
 // Load environment variables
 dotenv.config();
 
@@ -40,8 +36,30 @@ app.get("/", (req, res) => {
     });
 });
 
-// Mount API routes
-app.use(routes);
+// API version prefix
+const API_VERSION = '/api/v1';
+
+// API info endpoint
+app.get(API_VERSION, (req, res) => {
+    res.json({
+        success: true,
+        message: 'DrawPlayUniverse API',
+        version: '1.0.0',
+        endpoints: {
+            auth: `${API_VERSION}/auth`,
+            users: `${API_VERSION}/users`,
+            drawings: `${API_VERSION}/drawings`,
+            games: `${API_VERSION}/games`,
+            health: '/health'
+        }
+    });
+});
+
+// Mount API routes directly
+app.use(`${API_VERSION}/auth`, require('./routes/authRoutes'));
+app.use(`${API_VERSION}/users`, require('./routes/userRoutes'));
+app.use(`${API_VERSION}/drawings`, require('./routes/drawingRoutes'));
+app.use(`${API_VERSION}/games`, require('./routes/gameRoutes'));
 
 // 404 handler for undefined routes
 app.use(notFound);

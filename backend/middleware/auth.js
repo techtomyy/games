@@ -139,7 +139,7 @@ const authRateLimit = (req, res, next) => {
     const clientIp = req.ip || req.connection.remoteAddress;
     const now = Date.now();
     const windowMs = 15 * 60 * 1000; // 15 minutes
-    const maxAttempts = 1000; // 5 attempts per window
+    const maxAttempts = 10; // 10 attempts per window
     
     // This is a basic implementation - in production, use a proper rate limiting library
     if (!global.authAttempts) {
