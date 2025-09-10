@@ -7,6 +7,7 @@ const corsMiddleware = require("./middleware/cors");
 const { logger, errorLogger } = require("./middleware/logger");
 const { errorHandler, notFound } = require("./middleware/errorHandler");
 const { sanitizeInput } = require("./middleware/validation");
+const { analyzeMetafile } = require("esbuild");
 // Load environment variables
 dotenv.config();
 
@@ -24,18 +25,6 @@ app.use(logger);
 app.use(corsMiddleware);
 app.use(sanitizeInput);
 
-// Basic route
-app.get("/", (req, res) => {
-    res.json({ 
-        success: true,
-        message: "DrawPlayUniverse Backend Server is running!",
-        status: "healthy",
-        timestamp: new Date().toISOString(),
-        version: "1.0.0",
-        environment: process.env.NODE_ENV || 'development'
-    });
-});
-
 // API version prefix
 const API_VERSION = '/api/v1';
 
@@ -50,6 +39,7 @@ app.get(API_VERSION, (req, res) => {
             users: `${API_VERSION}/users`,
             drawings: `${API_VERSION}/drawings`,
             games: `${API_VERSION}/games`,
+            analyze_drawing:`${API_VERSION}/analyze-drawing`,
             health: '/health'
         }
     });
@@ -60,6 +50,7 @@ app.use(`${API_VERSION}/auth`, require('./routes/authRoutes'));
 app.use(`${API_VERSION}/users`, require('./routes/userRoutes'));
 app.use(`${API_VERSION}/drawings`, require('./routes/drawingRoutes'));
 app.use(`${API_VERSION}/games`, require('./routes/gameRoutes'));
+app.use(`${API_VERSION}/analyze-drawing`,require('./routes/analyzeRoute'));
 
 // 404 handler for undefined routes
 app.use(notFound);

@@ -7,13 +7,14 @@ interface DrawingCanvasProps {
   onDrawingChange?: (imageData: string) => void;
   width?: number;
   height?: number;
+  initialImageData?: string;
 }
 
 interface DrawingState {
   imageData: ImageData | null;
 }
 
-export default function DrawingCanvas({ onDrawingChange, width = 600, height = 400 }: DrawingCanvasProps) {
+export default function DrawingCanvas({ onDrawingChange, width = 600, height = 400, initialImageData }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -24,6 +25,16 @@ export default function DrawingCanvas({ onDrawingChange, width = 600, height = 4
   const [redoStack, setRedoStack] = useState<DrawingState[]>([]);
 
   const colors = ['#FF6B6B', '#00CED1', '#FFD700', '#FF8C42', '#800000', '#000000'];
+
+  const saveState = useCallback(() => {
+    const canvas = canvasRef.current;
+    const context = contextRef.current;
+    if (!canvas || !context) return;
+
+    const imageData = context.getImageData(0, 0, width, height);
+    setUndoStack(prev => [...prev.slice(-19), { imageData }]); // Keep last 20 states
+    setRedoStack([]);
+  }, [width, height]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -43,17 +54,37 @@ export default function DrawingCanvas({ onDrawingChange, width = 600, height = 4
     
     // Save initial state
     saveState();
-  }, [width, height]);
+  }, [width, height, saveState]);
 
-  const saveState = useCallback(() => {
+  // Load initial image if provided
+  useEffect(() => {
+    if (!initialImageData) return;
     const canvas = canvasRef.current;
     const context = contextRef.current;
     if (!canvas || !context) return;
 
-    const imageData = context.getImageData(0, 0, width, height);
-    setUndoStack(prev => [...prev.slice(-19), { imageData }]); // Keep last 20 states
-    setRedoStack([]);
-  }, [width, height]);
+    const img = new Image();
+    img.onload = () => {
+      // Clear to white background
+      context.fillStyle = 'white';
+      context.fillRect(0, 0, width, height);
+      // Draw image fit into canvas preserving aspect ratio
+      const scale = Math.min(width / img.width, height / img.height);
+      const drawWidth = img.width * scale;
+      const drawHeight = img.height * scale;
+      const dx = (width - drawWidth) / 2;
+      const dy = (height - drawHeight) / 2;
+      context.drawImage(img, dx, dy, drawWidth, drawHeight);
+      saveState();
+      if (onDrawingChange && canvas) {
+        const dataUrl = canvas.toDataURL('image/png');
+        onDrawingChange(dataUrl);
+      }
+    };
+    img.src = initialImageData;
+  }, [initialImageData, width, height, onDrawingChange, saveState]);
+
+  
 
   const getCoordinates = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

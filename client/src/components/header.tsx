@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Palette, User, LogOut, Home, Brush, ImageIcon } from "lucide-react";
+import { Palette, User, LogOut, Home, Brush, ImageIcon, Maximize, Minimize } from "lucide-react";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import AuthForm from "./auth-form";
@@ -12,6 +12,29 @@ export default function Header() {
   const [showAuth, setShowAuth] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { toast } = useToast();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Fullscreen change listener
+  React.useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (e) {
+      console.error('Fullscreen toggle failed:', e);
+      toast({ title: 'Fullscreen Error', description: 'Unable to toggle fullscreen', variant: 'destructive' });
+    }
+  };
 
   // Close auth modal when user becomes authenticated
   React.useEffect(() => {
@@ -100,6 +123,16 @@ export default function Header() {
                     {isLoggingOut ? "Signing Out..." : "Sign Out"}
                   </span>
                 </Button>
+                <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              data-testid="button-fullscreen"
+            >
+              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+              <span className="ml-2 hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+            </Button>
               </div>
             ) : (
               <div className="flex items-center space-x-4">

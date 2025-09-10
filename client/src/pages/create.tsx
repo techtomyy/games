@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -8,6 +8,7 @@ import { queryClient } from "@/lib/queryClient";
 interface Drawing {
   id: string;
   imageData: string;
+  title?: string;
   createdAt: string;
 }
 
@@ -41,6 +42,7 @@ import GamePreview from "@/components/game-preview";
 import GameTypesGrid from "@/components/game-types-grid";
 import CreationProgress from "@/components/creation-progress";
 import { Button } from "@/components/ui/button";
+import { Input as FileInput } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,6 +85,8 @@ export default function Create() {
   const [gameTitle, setGameTitle] = useState<string>('');
   const [generatedGame, setGeneratedGame] = useState<Game | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const stepNames = [
     "Draw Character",
@@ -107,25 +111,56 @@ export default function Create() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Save drawing function
-  const saveDrawing = (imageData: string) => {
-    const drawing: Drawing = {
-      id: `drawing-${Date.now()}`,
+  // Save drawing function (backend first, local fallback)
+  const saveDrawing = async (imageData: string) => {
+    const fallback = () => {
+      const local: Drawing = {
+        id: `drawing-${Date.now()}`,
         title: "New Drawing",
         imageData,
-      createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      const savedDrawings = JSON.parse(localStorage.getItem('drawplay-drawings') || '[]');
+      savedDrawings.push(local);
+      localStorage.setItem('drawplay-drawings', JSON.stringify(savedDrawings));
+      setSavedDrawing(local);
+      toast({ title: "Drawing Saved (Local)", description: "Saved to your browser storage." });
     };
-    
-    // Save to localStorage
-    const savedDrawings = JSON.parse(localStorage.getItem('drawplay-drawings') || '[]');
-    savedDrawings.push(drawing);
-    localStorage.setItem('drawplay-drawings', JSON.stringify(savedDrawings));
-    
-      setSavedDrawing(drawing);
-      toast({
-        title: "Drawing Saved",
-        description: "Your drawing has been saved successfully!",
+
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        fallback();
+        return;
+      }
+
+      const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1'}/drawings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image_data: imageData, title: 'New Drawing' }),
       });
+
+      const result = await resp.json();
+      if (!resp.ok || !result.success) {
+        throw new Error(result.error || `Failed with status ${resp.status}`);
+      }
+
+      const row = result.data; // { id, user_id, image_data, title, created_at }
+      const drawing: Drawing = {
+        id: row.id,
+        title: row.title,
+        imageData: row.image_data,
+        createdAt: row.created_at,
+      };
+      setSavedDrawing(drawing);
+      toast({ title: "Drawing Saved", description: "Uploaded to your account." });
+    } catch (e) {
+      console.error('Save drawing failed, falling back to local:', e);
+      fallback();
+    }
   };
 
   // Analyze drawing function
@@ -233,7 +268,7 @@ export default function Create() {
     }
 
     // Save drawing first
-    saveDrawing(currentDrawing);
+    await saveDrawing(currentDrawing);
     
     // Then analyze it
     setStep(2);
@@ -356,12 +391,53 @@ export default function Create() {
           <div className="grid lg:grid-cols-2 gap-8">
             <div>
               <DrawingCanvas 
+                key={uploadedImage || 'blank'}
                 onDrawingChange={handleDrawingChange}
                 width={600}
                 height={400}
+                initialImageData={uploadedImage}
               />
               
               <div className="mt-6 text-center">
+                {/* Upload Controls */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <FileInput
+                      ref={fileInputRef as any}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const dataUrl = reader.result as string;
+                          setUploadedImage(dataUrl);
+                          setCurrentDrawing(dataUrl);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                      data-testid="input-upload-image"
+                    />
+                    <span>Upload Image</span>
+                  </label>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setUploadedImage('');
+                      setCurrentDrawing('');
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '' as any;
+                      }
+                    }}
+                    disabled={!uploadedImage}
+                    data-testid="button-remove-image"
+                  >
+                    Remove Image
+                  </Button>
+                </div>
+
                 <Button
                   onClick={handleSaveAndAnalyze}
                   disabled={!currentDrawing}
