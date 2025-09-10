@@ -167,31 +167,43 @@ export default function Create() {
   const analyzeDrawing = async (imageData: string) => {
     setIsProcessing(true);
     
-    // Simulate AI analysis delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock analysis - in a real app, this would call an AI service
-    const mockAnalysis: AnalysisResult = {
-      characterType: "hero",
-      suggestedGameTypes: ["platformer", "racing", "battle"],
-      animationFrames: 4,
-      physicsProperties: {
-        mass: 1.0,
-        bounce: 0.3,
-        friction: 0.8,
-      },
-      abilities: ["jump", "run", "attack"],
-    };
-    
-    setAnalysis(mockAnalysis);
-      setStep(3);
-    setIsProcessing(false);
-      toast({
-        title: "Analysis Complete!",
-      description: `Detected a ${mockAnalysis.characterType}. Choose your game type!`,
-    });
-  };
+    try {
+        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+        const response = await fetch(`${BASE}/analyze-drawing`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+            },
+            body: JSON.stringify({ imagedata: imageData })
+        });
+        if (!response.ok) {
+          throw new Error(`${response.status}: ${response.statusText}`);
+        }
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error);
+        }
 
+        setAnalysis(result.data);
+        setStep(3);
+        setIsProcessing(false);
+        
+        toast({
+            title: "AI Analysis Complete!",
+            description: `Detected a ${result.data.characterType}. Choose your game type!`,
+        });
+    } catch (error) {
+        console.error('AI analysis failed:', error);
+        setIsProcessing(false);
+        toast({
+            title: "Analysis Failed",
+            description: "Failed to analyze drawing with AI. Please try again.",
+            variant: "destructive",
+        });
+    }
+};
   // Generate game function
   const generateGame = async ({ drawingId, gameType, title }: { drawingId: string; gameType: string; title: string }) => {
     console.log('Starting game generation:', { drawingId, gameType, title });
@@ -528,25 +540,28 @@ export default function Create() {
 
         {/* Step 3: Game Type Selection */}
         {step === 3 && analysis && (
-          <div className="space-y-8">
+            <div className="space-y-8">
             <Card className="max-w-2xl mx-auto">
-              <CardContent className="p-6">
-                <h3 className="font-semibold text-foreground mb-4" data-testid="analysis-results">
-                  Analysis Results
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Character Type</p>
-                    <p className="text-foreground capitalize" data-testid="character-type">{analysis.characterType}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Suggested Abilities</p>
-                    <p className="text-foreground" data-testid="character-abilities">
-                      {analysis.abilities.join(', ') || 'Basic movement'}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
+                <CardContent className="p-6">
+                    <h3 className="font-semibold text-foreground mb-4">
+                        AI Analysis Results
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Character Type</p>
+                            <p className="text-foreground capitalize">{analysis.characterType}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Suggested Game Types</p>
+                            <p className="text-foreground">{analysis.suggestedGameTypes.join(', ')}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground">Abilities</p>
+                            <p className="text-foreground">{analysis.abilities.join(', ')}</p>
+                        </div>
+                        {/* Personality field removed due to missing property on AnalysisResult */}
+                    </div>
+                </CardContent>
             </Card>
 
             <div>

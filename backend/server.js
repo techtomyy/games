@@ -66,6 +66,10 @@ app.listen(PORT, async () => {
     console.log(`📊 Health check available at: http://localhost:${PORT}/health`);
     console.log(`🔗 API documentation at: http://localhost:${PORT}/api/v1`);
     
+    if (!process.env.OPENAI_API_KEY) {
+        console.warn('⚠️  OPENAI_API_KEY is not set. AI analysis endpoints will return 500 until configured.');
+    }
+
     // Test Supabase connection on startup
     console.log("🔗 Testing Supabase connection...");
     const isConnected = await testConnection();

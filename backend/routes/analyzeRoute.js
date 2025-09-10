@@ -1,6 +1,9 @@
-const { 
-  analyzeDrawingWithAI,    // Add this
-} = require('../controllers/analyzeController');
+const express = require('express');
+const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
+const { analyzeDrawingWithAI } = require('../controllers/analyzeController');
 
-// Add these routes
-router.post('/analyze-drawing', authenticateToken, analyzeDrawingWithAI);
+// POST /api/v1/analyze-drawing
+router.post('/', authenticateToken, analyzeDrawingWithAI);
+
+module.exports = router;

@@ -40,7 +40,7 @@ export default function DrawingCanvas({ onDrawingChange, width = 600, height = 4
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext('2d', { willReadFrequently: true } as any);
     if (!context) return;
 
     context.lineCap = 'round';
