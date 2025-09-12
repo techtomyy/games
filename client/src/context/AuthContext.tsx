@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from "react";
+import { toast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { apiClient, getStoredUser, storeUser, clearStoredUser, User } from "@/lib/api";
 
@@ -22,6 +23,103 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [, setLocation] = useLocation();
+  const refreshTimeoutRef = useRef<number | null>(null);
+  const hasRegistered401HandlerRef = useRef(false);
+
+  const clearRefreshTimer = () => {
+    if (refreshTimeoutRef.current) {
+      window.clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await apiClient.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clear user data, even if API call fails
+      setUser(null);
+      clearStoredUser();
+      clearRefreshTimer();
+      // Small delay to ensure state is updated before redirect
+      setTimeout(() => {
+        setLocation("/");
+      }, 200);
+    }
+  };
+
+  const scheduleAutoRefreshOrLogout = async () => {
+    clearRefreshTimer();
+    const expiresAtStr = localStorage.getItem('access_expires_at');
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!expiresAtStr || !refreshToken) {
+      return;
+    }
+    const expiresAtMs = parseInt(expiresAtStr, 10);
+    const now = Date.now();
+
+    if (Number.isFinite(expiresAtMs) && expiresAtMs <= now) {
+      toast({
+        title: "Signed out",
+        description: "Your session expired. Please sign in again.",
+        variant: "destructive",
+      });
+      await logout();
+      return;
+    }
+
+    const REFRESH_EARLY_MS = 60_000;
+    const delay = Math.max(0, (Number.isFinite(expiresAtMs) ? expiresAtMs : now) - now - REFRESH_EARLY_MS);
+    refreshTimeoutRef.current = window.setTimeout(async () => {
+      // On timer fire (close to expiry), log out immediately per requirement
+      toast({
+        title: "Signed out",
+        description: "Your session expired. Please sign in again.",
+        variant: "destructive",
+      });
+      await logout();
+    }, delay);
+  };
+
+  // Ensure immediate logout even after sleep or across tabs
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const expiresAtStr = localStorage.getItem('access_expires_at');
+        const expiresAtMs = expiresAtStr ? parseInt(expiresAtStr, 10) : NaN;
+        if (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now()) {
+          toast({
+            title: "Signed out",
+            description: "Your session expired. Please sign in again.",
+            variant: "destructive",
+          });
+          logout();
+        }
+      }
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'access_expires_at' || e.key === 'access_token') {
+        const expiresAtStr = localStorage.getItem('access_expires_at');
+        const expiresAtMs = expiresAtStr ? parseInt(expiresAtStr, 10) : NaN;
+        if (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now()) {
+          toast({
+            title: "Signed out",
+            description: "Your session expired. Please sign in again.",
+            variant: "destructive",
+          });
+          logout();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [logout]);
 
   useEffect(() => {
     // Check if user is authenticated and get user data
@@ -29,11 +127,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const storedUser = getStoredUser();
         if (storedUser) {
+          // If token is already expired at startup, log out immediately
+          const expiresAtStr = localStorage.getItem('access_expires_at');
+          const expiresAtMs = expiresAtStr ? parseInt(expiresAtStr, 10) : NaN;
+          if (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now()) {
+            toast({
+              title: "Signed out",
+              description: "Your session expired. Please sign in again.",
+              variant: "destructive",
+            });
+            await logout();
+            return;
+          }
           // Verify the token is still valid by getting current user
           const response = await apiClient.getCurrentUser();
           if (response.success) {
             setUser(response.user);
             storeUser(response.user);
+            await scheduleAutoRefreshOrLogout();
           } else {
             // Token is invalid, clear stored data
             clearStoredUser();
@@ -49,6 +160,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     initializeAuth();
+
+    if (!hasRegistered401HandlerRef.current) {
+      apiClient.registerOnUnauthorized(() => {
+        toast({
+          title: "Signed out",
+          description: "Your session expired. Please sign in again.",
+          variant: "destructive",
+        });
+        logout();
+      });
+      hasRegistered401HandlerRef.current = true;
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -60,6 +183,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(response.user);
         storeUser(response.user);
         console.log('User state updated');
+        await scheduleAutoRefreshOrLogout();
         return response;
       } else {
         throw new Error('Login failed');
@@ -91,21 +215,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const logout = async () => {
-    try {
-      await apiClient.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Always clear user data, even if API call fails
-      setUser(null);
-      clearStoredUser();
-      // Small delay to ensure state is updated before redirect
-      setTimeout(() => {
-        setLocation("/");
-      }, 200);
-    }
-  };
 
   const resendConfirmation = async (email: string) => {
     try {

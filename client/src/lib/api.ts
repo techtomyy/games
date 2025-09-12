@@ -34,6 +34,7 @@ export interface ApiError {
 class ApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
+  private onUnauthorizedCallback: (() => void) | null = null;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -50,12 +51,47 @@ class ApiClient {
   private setToken(token: string) {
     this.accessToken = token;
     localStorage.setItem('access_token', token);
+    // If the backend did not set an explicit expiry yet, try to infer from JWT
+    try {
+      const inferred = this.inferExpiryFromJwt(token);
+      if (inferred) {
+        localStorage.setItem('access_expires_at', String(inferred));
+      }
+    } catch {}
   }
 
   private clearToken() {
     this.accessToken = null;
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('access_expires_at');
+  }
+
+  // Allow consumers (AuthContext) to react to 401s globally
+  registerOnUnauthorized(handler: () => void) {
+    this.onUnauthorizedCallback = handler;
+  }
+
+  private setSession(session?: { access_token: string; refresh_token: string; expires_at: number }) {
+    if (!session) return;
+    this.setToken(session.access_token);
+    localStorage.setItem('refresh_token', session.refresh_token);
+    // Store as milliseconds epoch for easier timers
+    const expiresMs = session.expires_at * 1000;
+    localStorage.setItem('access_expires_at', String(expiresMs));
+  }
+
+  private inferExpiryFromJwt(token: string): number | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payloadJson = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+      const payload = JSON.parse(payloadJson);
+      if (!payload || typeof payload.exp !== 'number') return null;
+      return payload.exp * 1000;
+    } catch {
+      return null;
+    }
   }
 
   private async request<T>(
@@ -83,7 +119,15 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(`${response.status}: ${data.error || 'Request failed'}`);
+        if (response.status === 401) {
+          // Only auto-logout if we actually attempted an authenticated request
+          if (this.accessToken && this.onUnauthorizedCallback) {
+            try { this.onUnauthorizedCallback(); } catch {}
+          }
+          const message = data?.error || 'Invalid credentials';
+          throw new Error(`401: ${message}`);
+        }
+        throw new Error(`${response.status}: ${data?.error || 'Request failed'}`);
       }
 
       return data;
@@ -107,10 +151,9 @@ class ApiClient {
       body: JSON.stringify(data),
     });
 
-    // If we get a session, store the tokens
+    // If we get a session, store the tokens and expiry
     if (response.session) {
-      this.setToken(response.session.access_token);
-      localStorage.setItem('refresh_token', response.session.refresh_token);
+      this.setSession(response.session);
     }
 
     return response;
@@ -125,10 +168,9 @@ class ApiClient {
       body: JSON.stringify(data),
     });
 
-    // Store the tokens
+    // Store the tokens and expiry
     if (response.session) {
-      this.setToken(response.session.access_token);
-      localStorage.setItem('refresh_token', response.session.refresh_token);
+      this.setSession(response.session);
     }
 
     return response;
@@ -168,10 +210,9 @@ class ApiClient {
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
-    // Update stored tokens
+    // Update stored tokens and expiry
     if (response.session) {
-      this.setToken(response.session.access_token);
-      localStorage.setItem('refresh_token', response.session.refresh_token);
+      this.setSession(response.session);
     }
 
     return response;
