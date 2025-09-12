@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import PhaserGame from "@/components/PhaserGame";
 import { queryClient } from "@/lib/queryClient";
 
 // Local interfaces since we removed shared schema
@@ -46,12 +47,12 @@ import { Input as FileInput } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Palette, 
-  Wand2, 
-  Play, 
-  Save, 
-  ArrowRight, 
+import {
+  Palette,
+  Wand2,
+  Play,
+  Save,
+  ArrowRight,
   ArrowLeft,
   Loader2,
   CheckCircle,
@@ -76,7 +77,7 @@ interface AnalysisResult {
 export default function Create() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
-  
+
   const [step, setStep] = useState(1); // 1: Draw, 2: Analyze, 3: Choose Game Type, 4: Generate
   const [currentDrawing, setCurrentDrawing] = useState<string>('');
   const [savedDrawing, setSavedDrawing] = useState<Drawing | null>(null);
@@ -90,7 +91,7 @@ export default function Create() {
 
   const stepNames = [
     "Draw Character",
-    "Analyze Drawing", 
+    "Analyze Drawing",
     "Choose Game Type",
     "Generate Game",
     "Play & Share"
@@ -166,103 +167,93 @@ export default function Create() {
   // Analyze drawing function
   const analyzeDrawing = async (imageData: string) => {
     setIsProcessing(true);
-    
-    try {
-        const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
-        const response = await fetch(`${BASE}/analyze-drawing`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-            },
-            body: JSON.stringify({ imagedata: imageData })
-        });
-        if (!response.ok) {
-          throw new Error(`${response.status}: ${response.statusText}`);
-        }
-        const result = await response.json();
-        
-        if (!result.success) {
-            throw new Error(result.error);
-        }
 
-        setAnalysis(result.data);
-        setStep(3);
-        setIsProcessing(false);
-        
-        toast({
-            title: "AI Analysis Complete!",
-            description: `Detected a ${result.data.characterType}. Choose your game type!`,
-        });
+    try {
+      const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+      const response = await fetch(`${BASE}/analyze-drawing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify({ imagedata: imageData })
+      });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      setAnalysis(result.data);
+      setStep(3);
+      setIsProcessing(false);
+
+      toast({
+        title: "AI Analysis Complete!",
+        description: `Detected a ${result.data.characterType}. Choose your game type!`,
+      });
     } catch (error) {
-        console.error('AI analysis failed:', error);
-        setIsProcessing(false);
-        toast({
-            title: "Analysis Failed",
-            description: "Failed to analyze drawing with AI. Please try again.",
-            variant: "destructive",
-        });
+      console.error('AI analysis failed:', error);
+      setIsProcessing(false);
+      toast({
+        title: "Analysis Failed",
+        description: "Failed to analyze drawing with AI. Please try again.",
+        variant: "destructive",
+      });
     }
-};
-  // Generate game function
-  const generateGame = async ({ drawingId, gameType, title }: { drawingId: string; gameType: string; title: string }) => {
-    console.log('Starting game generation:', { drawingId, gameType, title });
+  };
+  // Generate game function (calls backend AI endpoint)
+  const generateGame = async ({ imageData, gameType, title, characterAnalysis }: { imageData: string; gameType: string; title: string; characterAnalysis: any }) => {
+    console.log('Starting game generation:', { imageData, gameType, title, characterAnalysis });
     setIsProcessing(true);
     setStep(4);
-    
-    // Simulate game generation delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Generate game data that works with our game engine
-    const mockGame: Game = {
-      id: `game-${Date.now()}`,
-      title: title || `${gameType} Game`,
-      gameType,
-      gameData: {
-        gameType,
-        playerSprite: savedDrawing?.imageData,
-        characterAnalysis: analysis || {
-          characterType: "hero",
-          suggestedGameTypes: [gameType],
-          animationFrames: 4,
-          physicsProperties: {
-            mass: 1.0,
-            bounce: 0.3,
-            friction: 0.8,
-          },
-          abilities: ["jump", "run", "attack"],
+    try {
+      const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api/v1';
+      const response = await fetch(`${BASE}/generate-ai`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         },
-        levels: [
-          { name: "Level 1", difficulty: "easy" },
-          { name: "Level 2", difficulty: "medium" },
-        ],
-      },
-      spriteData: JSON.stringify({
-        frames: {
-          idle: [savedDrawing?.imageData || ''],
-          walk: [savedDrawing?.imageData || ''],
-        },
-        dimensions: { width: 64, height: 64 }
-      }),
-      isPublic: false,
-      likes: 0,
-      plays: 0,
-      createdAt: new Date().toISOString(),
-    };
-    
-    // Save to localStorage
-    const savedGames = JSON.parse(localStorage.getItem('drawplay-games') || '[]');
-    savedGames.push(mockGame);
-    localStorage.setItem('drawplay-games', JSON.stringify(savedGames));
-    
-    console.log('Game generated successfully:', mockGame);
-    setGeneratedGame(mockGame);
-    setStep(5);
-    setIsProcessing(false);
-      toast({
-        title: "Game Generated!",
-        description: "Your game is ready to play!",
+        body: JSON.stringify({ imagedata: imageData, gameType, title, characterAnalysis })
       });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      const row = result.data;
+      const generated: Game = {
+        id: row.id,
+        title: row.title,
+        gameType: row.game_type,
+        gameData: row.game_data,
+        spriteData: JSON.stringify(row.sprite_data || {}),
+        isPublic: row.is_public,
+        likes: row.likes || 0,
+        plays: row.plays || 0,
+        createdAt: row.created_at,
+      };
+      setGeneratedGame(generated);
+      setStep(5);
+      toast({ title: 'Game Generated!', description: 'Your AI game is ready to play!' });
+    } catch (error) {
+      console.error('AI generation failed:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate game with AI. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleDrawingChange = (imageData: string) => {
@@ -281,7 +272,7 @@ export default function Create() {
 
     // Save drawing first
     await saveDrawing(currentDrawing);
-    
+
     // Then analyze it
     setStep(2);
     analyzeDrawing(currentDrawing);
@@ -296,7 +287,7 @@ export default function Create() {
 
   const handleGenerateGame = async () => {
     console.log('Generate game clicked:', { savedDrawing, selectedGameType, gameTitle });
-    
+
     if (!savedDrawing || !selectedGameType) {
       console.log('Missing information:', { savedDrawing: !!savedDrawing, selectedGameType });
       toast({
@@ -309,9 +300,10 @@ export default function Create() {
 
     console.log('Calling generateGame...');
     await generateGame({
-      drawingId: savedDrawing.id,
+      imageData: savedDrawing.imageData,
       gameType: selectedGameType,
       title: gameTitle || `My ${selectedGameType} Game`,
+      characterAnalysis: analysis
     });
   };
 
@@ -354,7 +346,7 @@ export default function Create() {
               <AlertCircle className="w-16 h-16 text-orange mx-auto mb-4" />
               <h2 className="font-heading text-2xl text-primary mb-4">Monthly Limit Reached</h2>
               <p className="text-muted-foreground mb-6">
-                You've created {gamesThisMonth} out of {maxGames} games this month. 
+                You've created {gamesThisMonth} out of {maxGames} games this month.
                 Upgrade to Pro for unlimited game creation!
               </p>
               <Button className="btn-gold" data-testid="button-upgrade-limit">
@@ -371,10 +363,10 @@ export default function Create() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Progress Indicator */}
-        <CreationProgress 
+        <CreationProgress
           currentStep={step}
           totalSteps={stepNames.length}
           stepNames={stepNames}
@@ -402,14 +394,14 @@ export default function Create() {
         {step === 1 && (
           <div className="grid lg:grid-cols-2 gap-8">
             <div>
-              <DrawingCanvas 
+              <DrawingCanvas
                 key={uploadedImage || 'blank'}
                 onDrawingChange={handleDrawingChange}
                 width={600}
                 height={400}
                 initialImageData={uploadedImage}
               />
-              
+
               <div className="mt-6 text-center">
                 {/* Upload Controls */}
                 <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
@@ -418,6 +410,7 @@ export default function Create() {
                       ref={fileInputRef as any}
                       type="file"
                       accept="image/*"
+                      disabled={isProcessing}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
@@ -452,14 +445,14 @@ export default function Create() {
 
                 <Button
                   onClick={handleSaveAndAnalyze}
-                  disabled={!currentDrawing}
+                  disabled={isProcessing || !currentDrawing}
                   className="btn-coral"
                   data-testid="button-analyze-drawing"
                 >
-                  {false ? (
+                  {isProcessing ? (
                     <>
                       <Loader2 className="mr-2 animate-spin" />
-                      Saving...
+                      Analyzing...
                     </>
                   ) : (
                     <>
@@ -518,7 +511,7 @@ export default function Create() {
                 <p className="text-muted-foreground">
                   Our AI is examining your artwork to understand your character's features and abilities.
                 </p>
-                
+
                 <div className="mt-6 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Character Detection</span>
@@ -540,28 +533,28 @@ export default function Create() {
 
         {/* Step 3: Game Type Selection */}
         {step === 3 && analysis && (
-            <div className="space-y-8">
+          <div className="space-y-8">
             <Card className="max-w-2xl mx-auto">
-                <CardContent className="p-6">
-                    <h3 className="font-semibold text-foreground mb-4">
-                        AI Analysis Results
-                    </h3>
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Character Type</p>
-                            <p className="text-foreground capitalize">{analysis.characterType}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Suggested Game Types</p>
-                            <p className="text-foreground">{analysis.suggestedGameTypes.join(', ')}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-muted-foreground">Abilities</p>
-                            <p className="text-foreground">{analysis.abilities.join(', ')}</p>
-                        </div>
-                        {/* Personality field removed due to missing property on AnalysisResult */}
-                    </div>
-                </CardContent>
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-foreground mb-4">
+                  AI Analysis Results
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Character Type</p>
+                    <p className="text-foreground capitalize">{analysis.characterType}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Suggested Game Types</p>
+                    <p className="text-foreground">{analysis.suggestedGameTypes.join(', ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Abilities</p>
+                    <p className="text-foreground">{analysis.abilities.join(', ')}</p>
+                  </div>
+                  {/* Personality field removed due to missing property on AnalysisResult */}
+                </div>
+              </CardContent>
             </Card>
 
             <div>
@@ -613,31 +606,31 @@ export default function Create() {
               </div>
             ) : (
               <>
-            <GamePreview
-              game={generatedGame || undefined}
+                <GamePreview
+                  game={generatedGame || undefined}
                   isGenerating={false}
-              onPlay={() => generatedGame && window.open(`/game/${generatedGame.id}`, '_blank')}
-            />
-            
-            {generatedGame && (
-              <div className="flex justify-center space-x-4 mt-8">
-                <Button
-                  onClick={() => window.open(`/game/${generatedGame.id}`, '_blank')}
-                  className="btn-coral"
-                  data-testid="button-play-generated"
-                >
-                  <Play className="mr-2" />
-                  Play Game
-                </Button>
-                <Button
-                  onClick={resetWorkflow}
-                  variant="outline"
-                  data-testid="button-create-another"
-                >
-                  Create Another
-                </Button>
-              </div>
-            )}
+                  onPlay={() => generatedGame && window.open(`/game/${generatedGame.id}`, '_blank')}
+                />
+
+                {generatedGame && (
+                  <div className="flex justify-center space-x-4 mt-8">
+                    <Button
+                      onClick={() => window.open(`/game/${generatedGame.id}`, '_blank')}
+                      className="btn-coral"
+                      data-testid="button-play-generated"
+                    >
+                      <Play className="mr-2" />
+                      Play Game
+                    </Button>
+                    <Button
+                      onClick={resetWorkflow}
+                      variant="outline"
+                      data-testid="button-create-another"
+                    >
+                      Create Another
+                    </Button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -657,18 +650,15 @@ export default function Create() {
             </div>
 
             <div className="grid lg:grid-cols-2 gap-8">
-              {/* Game Preview */}
+              {/* LEFT: Embed PhaserJS game */}
               <div>
-                <h3 className="font-semibold text-foreground mb-4">Your Game</h3>
-                <GamePreview 
-                  game={generatedGame}
-                  onPlay={() => console.log('Playing game')}
-                  onLike={() => console.log('Liking game')}
-                  onShare={() => console.log('Sharing game')}
-                />
+                <h3 className="font-semibold text-foreground mb-4">Play Your Game</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <PhaserGame gameId={generatedGame.id} />
+                </div>
               </div>
 
-              {/* Game Stats & Actions */}
+              {/* RIGHT: Game Stats & Actions */}
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -681,7 +671,7 @@ export default function Create() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Character Type:</span>
-                      <span className="font-medium">{analysis?.characterType || 'Hero'}</span>
+                      <span className="font-medium">{analysis?.characterType || "Hero"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Created:</span>
@@ -695,17 +685,21 @@ export default function Create() {
                     <CardTitle>What's Next?</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full btn-coral" onClick={() => console.log('Play game')}>
-                      <Play className="mr-2" size={16} />
-                      Play Your Game
+                    <Button
+                      className="w-full btn-coral"
+                      onClick={() => console.log("Play fullscreen")}
+                    >
+                      <Play className="mr-2" size={16} /> Play Fullscreen
                     </Button>
-                    <Button variant="outline" className="w-full" onClick={() => window.location.href = '/gallery'}>
-                      <ImageIcon className="mr-2" size={16} />
-                      View in Gallery
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => (window.location.href = "/gallery")}
+                    >
+                      <ImageIcon className="mr-2" size={16} /> View in Gallery
                     </Button>
                     <Button variant="outline" className="w-full" onClick={resetWorkflow}>
-                      <Plus className="mr-2" size={16} />
-                      Create Another Game
+                      <Plus className="mr-2" size={16} /> Create Another Game
                     </Button>
                   </CardContent>
                 </Card>
@@ -713,6 +707,7 @@ export default function Create() {
             </div>
           </div>
         )}
+
 
         {/* Navigation */}
         {step > 1 && step < 5 && (

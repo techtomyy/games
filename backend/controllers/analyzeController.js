@@ -1,13 +1,6 @@
-const OpenAI = require('openai');
-let openaiClient = null;
-function getOpenAIClient() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return null;
-    if (!openaiClient) {
-        openaiClient = new OpenAI({ apiKey });
-    }
-    return openaiClient;
-}
+const openai = require('../config/openai');
+
+
 
 const analyzeDrawingWithAI = async (req, res) => {
     try {
@@ -15,23 +8,33 @@ const analyzeDrawingWithAI = async (req, res) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
         if (!imagedata) return res.status(400).json({ success: false, error: 'imagedata is required' });
-        const openai = getOpenAIClient();
         if (!openai) return res.status(500).json({ success: false, error: 'OpenAI API key not configured' });
 
-        const analysisPrompt = `Analyze this drawing and provide a detailed character analysis in JSON format:
- {
-     "characterType": "pet/vehical/monsters/warriors/hero/robot/creature/etc",
-     "suggestedGameTypes": ["platformer", "racing", "battle", "pet", "story", "board"],
-     "abilities": ["jump", "run", "fly", "swim", "attack", "collect"],
-     "animationFrames": 4,
-     "physicsProperties": {
-         "mass": 1.0,
-         "bounce": 0.3,
-         "friction": 0.8
-     },
-     "personality": "brave/friendly/aggressive/curious/etc",
-     "specialFeatures": ["wings", "horns", "tail", "armor", "weapons"]
- }`;
+    const analysisPrompt = `Analyze this drawing and provide a detailed character analysis in JSON format:
+{
+  "characterType": "pet/vehicle/monster/warrior/hero/robot/creature/etc",
+  "suggestedGameTypes": ["platformer", "racing", "battle", "pet", "story", "board"],
+  "abilities": {
+    "platformer": ["jump", "double-jump", "wall-climb", "dash", "attack", "collect"],
+    "racing": ["accelerate", "brake", "drift", "boost", "turn", "collision-dodge"],
+    "battle": ["melee-attack", "ranged-attack", "block", "special-skill", "combo", "dodge"],
+    "pet": ["eat", "sleep", "play", "explore", "collect", "transform"],
+    "story": ["talk", "choose-dialogue", "explore", "interact", "solve-puzzle"],
+    "board": ["move", "roll-dice", "place-token", "draw-card", "trade", "strategize"]
+  },
+  "animationFrames": 4,
+  "physicsProperties": {
+    "mass": 1.0,
+    "bounce": 0.3,
+    "friction": 0.8,
+    "acceleration"?: number,
+    "maxSpeed"?: number,
+    "turnRate"?: number
+  },
+  "personality": "brave/friendly/aggressive/curious/etc",
+  "specialFeatures": ["wings", "horns", "tail", "armor", "weapons", "glow", "magic-aura", "cybernetic-enhancements"]
+}`;
+
         const response = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [

@@ -2,6 +2,12 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, RotateCcw } from "lucide-react";
 
+interface SpriteData {
+  frames?: { idle?: string[]; walk?: string[] };
+  fps?: number;
+  dimensions?: { width: number; height: number };
+}
+
 interface GameEngineProps {
   gameData: {
     gameType: string;
@@ -9,6 +15,7 @@ interface GameEngineProps {
     characterAnalysis: any;
     levels: Array<{ name: string; difficulty: string }>;
   };
+  spriteData?: SpriteData | string; // may come serialized from backend
   onGameEnd?: (score: number) => void;
 }
 
@@ -24,7 +31,7 @@ interface GameObject {
   collected?: boolean;
 }
 
-export default function GameEngine({ gameData, onGameEnd }: GameEngineProps) {
+export default function GameEngine({ gameData, spriteData, onGameEnd }: GameEngineProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const animationRef = useRef<number>();
@@ -33,6 +40,24 @@ export default function GameEngine({ gameData, onGameEnd }: GameEngineProps) {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [gameState, setGameState] = useState<'menu' | 'playing' | 'gameOver' | 'paused'>('menu');
+  const [animIndex, setAnimIndex] = useState(0);
+  const [animElapsed, setAnimElapsed] = useState(0);
+  const parsedSprite: SpriteData | null = (() => {
+    if (!spriteData) return null;
+    if (typeof spriteData === 'string') {
+      try { return JSON.parse(spriteData); } catch { return null; }
+    }
+    return spriteData as SpriteData;
+  })();
+
+  // Initialize 2D context
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    contextRef.current = ctx;
+  }, []);
 
   // Game objects
   const [player, setPlayer] = useState<GameObject>({
@@ -194,6 +219,21 @@ export default function GameEngine({ gameData, onGameEnd }: GameEngineProps) {
       }))
     );
 
+    // Update animation index
+    setAnimElapsed(prev => {
+      const fps = parsedSprite?.fps || 6;
+      const threshold = 1000 / fps;
+      const next = prev + 16; // approx per frame at 60fps
+      if (next >= threshold) {
+        setAnimIndex(i => {
+          const total = parsedSprite?.frames?.walk?.length || parsedSprite?.frames?.idle?.length || 1;
+          return total > 0 ? (i + 1) % total : 0;
+        });
+        return 0;
+      }
+      return next;
+    });
+
     // Check collisions
     checkCollisions();
 
@@ -289,13 +329,15 @@ export default function GameEngine({ gameData, onGameEnd }: GameEngineProps) {
       }
     });
 
-    // Draw player
-    if (gameData.playerSprite) {
+    // Draw player (animated if sprite frames available)
+    const frames = parsedSprite?.frames?.walk?.length ? parsedSprite.frames.walk : parsedSprite?.frames?.idle;
+    const frameSrc = frames && frames.length ? frames[animIndex % frames.length] : gameData.playerSprite;
+    if (frameSrc) {
       const img = new Image();
       img.onload = () => {
         context.drawImage(img, player.x, player.y, player.width, player.height);
       };
-      img.src = gameData.playerSprite;
+      img.src = frameSrc;
     } else {
       context.fillStyle = '#00FF00'; // Green fallback
       context.fillRect(player.x, player.y, player.width, player.height);

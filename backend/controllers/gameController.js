@@ -26,22 +26,40 @@ const createGame = async (req, res) => {
 
 // List my games
 const getMyGames = async (req, res) => {
-    try {
-        const userId = req.user?.id;
-        if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
-
-        const { data, error } = await supabase
-            .from('games')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        return res.json({ success: true, data });
-    } catch (error) {
-        console.error('Get my games error:', error);
-        return res.status(500).json({ success: false, error: error.message || 'Failed to fetch games' });
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
     }
+
+    const { data, error } = await supabase
+      .from('games')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    // ✅ Always return a consistent JSON structure
+    return res.json({
+      success: true,
+      games: data || []   // instead of "data"
+    });
+
+  } catch (error) {
+    console.error('Get my games error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch games'
+    });
+  }
 };
+
 
 // Get public games (optionally filter by type)
 const getPublicGames = async (req, res) => {
@@ -162,5 +180,4 @@ module.exports = {
     incrementPlays,
     incrementLikes
 };
-
 

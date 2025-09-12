@@ -9,6 +9,7 @@ import Landing from "./pages/landing";
 import Home from "./pages/home";
 import Create from "./pages/create";
 import Gallery from "./pages/gallery";
+import GamePage from "./pages/game";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/home" component={Home} />
       <Route path="/create" component={Create} />
       <Route path="/gallery" component={Gallery} />
+      <Route path="/game/:id" component={GamePage} />
       <Route component={NotFound} />
     </Switch>
   );

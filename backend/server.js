@@ -51,6 +51,7 @@ app.use(`${API_VERSION}/users`, require('./routes/userRoutes'));
 app.use(`${API_VERSION}/drawings`, require('./routes/drawingRoutes'));
 app.use(`${API_VERSION}/games`, require('./routes/gameRoutes'));
 app.use(`${API_VERSION}/analyze-drawing`,require('./routes/analyzeRoute'));
+app.use(`${API_VERSION}/generate-ai`,require('./routes/generateGameWithAIRoutes'));
 
 // 404 handler for undefined routes
 app.use(notFound);
